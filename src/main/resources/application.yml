@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: payment-processing-system
+
+  # Temporary: disable DB auto-configuration until a real datasource is configured.
+  # Remove these excludes once you add spring.datasource.* (or equivalent) settings.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
