@@ -25,6 +25,9 @@ target/
 /nbdist/
 /.nb-gradle/
 
+### VS Code ###
+.vscode/
+
 ### OS / tooling noise ###
 
 # macOS
@@ -39,6 +42,3 @@ Desktop.ini
 
 # Linux
 *~
-
-### VS Code ###
-.vscode/
