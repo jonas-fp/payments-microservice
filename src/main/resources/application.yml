@@ -2,13 +2,13 @@ spring:
   application:
     name: payment-processing-system
 
-  # Temporary: disable DB auto-configuration until a real datasource is configured.
-  # Remove these excludes once you add spring.datasource.* (or equivalent) settings.
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-
   datasource:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
