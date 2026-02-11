@@ -1,0 +1,2 @@
+-- Initial schema setup
+-- Intentionally empty migration to establish baseline version
