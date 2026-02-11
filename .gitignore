@@ -43,3 +43,6 @@ Desktop.ini
 
 # Linux
 *~
+
+# SQL
+payments-connection.session.sql
