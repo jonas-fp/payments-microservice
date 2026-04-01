@@ -45,7 +45,7 @@ jobs:
 
       - name: Log Docker into Public ECR
         run: |
-          aws ecr-public get-login-password --region us-east-1 \
+          aws ecr-public get-login-password --region us-west-2 \
           | docker login --username AWS \
           --password-stdin public.ecr.aws
 
@@ -65,6 +65,6 @@ jobs:
       - name: Force ECS service deployment
         run: |
           aws ecs update-service \
-            --cluster payment-processing-system-cluster \
-            --service payment-processing-system-service \
+            --cluster payments-cluster \
+            --service payments-task-definition-service-8x3hfcrz \
             --force-new-deployment
