@@ -62,9 +62,43 @@ jobs:
         run: |
           docker push public.ecr.aws/k2s7r0o6/payment-processing-system:${{ github.sha }}
 
-      - name: Force ECS service deployment
+      - name: Capture current ECS task definition
+        id: current-task-definition
+        run: |
+          TASK_DEFINITION_ARN=$(aws ecs describe-services \
+            --cluster payments-cluster \
+            --services payments-task-definition-service-8x3hfcrz \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          echo "arn=$TASK_DEFINITION_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Render updated task definition
+        id: render-task-definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "${{ steps.current-task-definition.outputs.arn }}" \
+            --query taskDefinition \
+            --output json > task-definition.json
+
+          jq \
+            --arg IMAGE "public.ecr.aws/k2s7r0o6/payment-processing-system:${{ github.sha }}" \
+            '
+            .containerDefinitions[0].image = $IMAGE
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+            ' task-definition.json > task-definition-rendered.json
+
+          NEW_TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://task-definition-rendered.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "arn=$NEW_TASK_DEFINITION_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Update ECS service
         run: |
           aws ecs update-service \
             --cluster payments-cluster \
             --service payments-task-definition-service-8x3hfcrz \
+            --task-definition "${{ steps.render-task-definition.outputs.arn }}" \
             --force-new-deployment
