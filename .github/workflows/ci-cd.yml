@@ -68,8 +68,8 @@ jobs:
         id: current-task-definition
         run: |
           TASK_DEFINITION_ARN=$(aws ecs describe-services \
-            --cluster payments-cluster \
-            --services payments-task-definition-service-8x3hfcrz \
+            --cluster payment-cluster \
+            --services payment-service \
             --query 'services[0].taskDefinition' \
             --output text)
 
@@ -100,7 +100,7 @@ jobs:
       - name: Update ECS service
         run: |
           aws ecs update-service \
-            --cluster payments-cluster \
-            --service payments-task-definition-service-8x3hfcrz \
+            --cluster payment-cluster \
+            --service payment-service \
             --task-definition "${{ steps.render-task-definition.outputs.arn }}" \
             --force-new-deployment
