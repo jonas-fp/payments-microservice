@@ -1,4 +1,4 @@
-HELP.md
+app/HELP.md
 .env
 target/
 !**/src/main/**/target/

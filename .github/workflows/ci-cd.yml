@@ -24,7 +24,8 @@ jobs:
           cache: maven
 
       - name: Build and test
-        run: mvn -B verify
+        working-directory: app
+        run: ./mvnw -B verify
 
   cd:
     name: Build and Deploy to ECS
@@ -50,6 +51,7 @@ jobs:
           --password-stdin public.ecr.aws
 
       - name: Build Docker image
+        working-directory: app
         run: |
           docker build -t payment-processing-system:${{ github.sha }} .
       

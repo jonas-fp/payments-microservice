@@ -12,7 +12,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   app:
-    build: .
+    build:
+      context: ../app
     container_name: payments-app
     depends_on:
       - postgres
