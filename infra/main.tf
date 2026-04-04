@@ -153,6 +153,10 @@ resource "aws_ecs_service" "app_service" {
   launch_type     = "FARGATE"
   depends_on      = [aws_cloudwatch_log_group.payment_app]
 
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+
   network_configuration {
     subnets         = data.aws_subnets.default.ids
     assign_public_ip = true
