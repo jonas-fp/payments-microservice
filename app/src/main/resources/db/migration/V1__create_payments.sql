@@ -2,7 +2,7 @@ CREATE TABLE payments (
     internal_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     public_id UUID NOT NULL,
     customer_id VARCHAR(128) NOT NULL,
-    billing_reference_id UUID NOT NULL, -- billing system's id
+    invoice_id UUID NOT NULL, -- Billing system's ID
     authorized_amount NUMERIC(15,2) NOT NULL,
     captured_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
     refunded_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
@@ -75,5 +75,5 @@ CREATE UNIQUE INDEX uk_payments_processor_payment_reference
     ON payments (processor_payment_reference)
     WHERE processor_payment_reference IS NOT NULL;
 
-CREATE INDEX uk_payments_billing_reference_id
-    ON payments (billing_reference_id);
+CREATE INDEX idx_payments_invoice_id
+    ON payments (invoice_id);
