@@ -1,5 +1,6 @@
 CREATE TABLE idempotency_keys (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    action_type VARCHAR(128) NOT NULL,
     idempotency_key VARCHAR(255) NOT NULL,
     payload_hash VARCHAR(128) NOT NULL,
     resource_type VARCHAR(64),
