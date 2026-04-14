@@ -3,9 +3,9 @@ CREATE TABLE payments (
     public_id UUID NOT NULL,
     customer_id VARCHAR(128) NOT NULL,
     billing_reference_id UUID NOT NULL, -- billing system's id
-    authorized_amount NUMERIC(19,4) NOT NULL,
-    captured_amount NUMERIC(19,4) NOT NULL DEFAULT 0,
-    refunded_amount NUMERIC(19,4) NOT NULL DEFAULT 0,
+    authorized_amount NUMERIC(15,2) NOT NULL,
+    captured_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
+    refunded_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
     currency CHAR(3) NOT NULL,
     status VARCHAR(32) NOT NULL,
     processor_payment_reference VARCHAR(128),
