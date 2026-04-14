@@ -1,6 +1,5 @@
 CREATE TABLE idempotency_keys (
-    id UUID PRIMARY KEY,
-    endpoint_scope VARCHAR(128) NOT NULL,
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     idempotency_key VARCHAR(255) NOT NULL,
     payload_hash VARCHAR(128) NOT NULL,
     resource_type VARCHAR(64),
