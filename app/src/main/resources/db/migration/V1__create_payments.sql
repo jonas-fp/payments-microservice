@@ -44,17 +44,17 @@ CREATE TABLE payments (
 );
 
 -- Permissions for immutability
-GRANT SELECT ON payments TO payments_user;
+GRANT SELECT ON payments TO payments_user; 
 
 GRANT INSERT (
-        public_id, customer_id, billing_reference_id, authorized_amount, 
+        public_id, customer_id, invoice_id, authorized_amount, 
         captured_amount, refunded_amount, currency, status,
         processor_payment_reference
-    ) ON payments TO payments_user,
+    ) ON payments TO payments_user;
 
 GRANT UPDATE (
-        authorized_amount, captured_amount, refunded_amount, currency, status,
-    ) ON payments TO payments_user,
+        authorized_amount, captured_amount, refunded_amount, status
+    ) ON payments TO payments_user;
 
 GRANT USAGE, SELECT ON SEQUENCE payments_internal_id_seq TO payments_user;
 
