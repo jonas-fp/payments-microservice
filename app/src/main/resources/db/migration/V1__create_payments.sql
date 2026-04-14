@@ -6,7 +6,7 @@ CREATE TABLE payments (
     authorized_amount NUMERIC(15,2) NOT NULL,
     captured_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
     refunded_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
-    currency CHAR(3) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
     status VARCHAR(32) NOT NULL,
     processor_payment_reference VARCHAR(128),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
