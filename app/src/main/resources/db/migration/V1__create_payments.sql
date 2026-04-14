@@ -20,6 +20,13 @@ CREATE TABLE payments (
     CONSTRAINT chk_payments_refunded_amount_non_negative CHECK (
         refunded_amount >= 0
     ),
+
+    CONSTRAINT chk_no_micro_cents_authorized
+    CHECK (authorized_amount * 100 = TRUNC(authorized_amount * 100)),
+    CONSTRAINT chk_no_micro_cents_captured
+    CHECK (captured_amount * 100 = TRUNC(captured_amount * 100)),
+    CONSTRAINT chk_no_micro_cents_refunded
+    CHECK (refunded_amount * 100 = TRUNC(refunded_amount * 100)),
     
     CONSTRAINT chk_valid_currency_code CHECK (currency IN ('USD', 'CAD')),
 
