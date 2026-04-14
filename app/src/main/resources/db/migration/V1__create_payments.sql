@@ -43,6 +43,20 @@ CREATE TABLE payments (
     )
 );
 
+-- Permissions for immutability
+GRANT SELECT ON payments TO payments_user;
+
+GRANT INSERT (
+        public_id, customer_id, billing_reference_id, authorized_amount, 
+        captured_amount, refunded_amount, currency, status,
+        processor_payment_reference
+    ) ON payments TO payments_user,
+
+GRANT UPDATE (
+        authorized_amount, captured_amount, refunded_amount, currency, status,
+    ) ON payments TO payments_user,
+
+GRANT USAGE, SELECT ON SEQUENCE payments_internal_id_seq TO payments_user;
 CREATE UNIQUE INDEX uk_payments_processor_payment_reference
     ON payments (processor_payment_reference)
     WHERE processor_payment_reference IS NOT NULL;
