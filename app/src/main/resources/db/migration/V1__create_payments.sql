@@ -70,6 +70,7 @@ CREATE TRIGGER trg_no_delete_payments
 BEFORE DELETE ON payments
 FOR EACH ROW EXECUTE FUNCTION block_deletions();
 
+-- Indexes for deduplication of processor ids and performance
 CREATE UNIQUE INDEX uk_payments_processor_payment_reference
     ON payments (processor_payment_reference)
     WHERE processor_payment_reference IS NOT NULL;
