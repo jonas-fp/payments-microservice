@@ -1,5 +1,6 @@
 CREATE TABLE payments (
-    id UUID PRIMARY KEY,
+    internal_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    public_id UUID NOT NULL,
     customer_id VARCHAR(128) NOT NULL,
     billing_reference_id VARCHAR(128) NOT NULL,
     authorized_amount NUMERIC(19,4) NOT NULL,
