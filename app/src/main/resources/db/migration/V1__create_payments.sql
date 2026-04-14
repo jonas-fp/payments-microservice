@@ -61,5 +61,5 @@ CREATE UNIQUE INDEX uk_payments_processor_payment_reference
     ON payments (processor_payment_reference)
     WHERE processor_payment_reference IS NOT NULL;
 
-CREATE UNIQUE INDEX uk_payments_billing_reference_id
+CREATE INDEX uk_payments_billing_reference_id
     ON payments (billing_reference_id);
