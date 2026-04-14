@@ -57,6 +57,19 @@ GRANT UPDATE (
     ) ON payments TO payments_user,
 
 GRANT USAGE, SELECT ON SEQUENCE payments_internal_id_seq TO payments_user;
+
+-- Trigger for immutability
+CREATE OR REPLACE FUNCTION block_deletions()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Deletions are not permitted on the payments table.';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_no_delete_payments
+BEFORE DELETE ON payments
+FOR EACH ROW EXECUTE FUNCTION block_deletions();
+
 CREATE UNIQUE INDEX uk_payments_processor_payment_reference
     ON payments (processor_payment_reference)
     WHERE processor_payment_reference IS NOT NULL;
