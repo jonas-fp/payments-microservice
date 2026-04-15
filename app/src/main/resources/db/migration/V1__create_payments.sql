@@ -1,6 +1,5 @@
 CREATE TABLE payments (
-    internal_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    public_id UUID NOT NULL,
+    id UUID NOT NULL,
     customer_id VARCHAR(128) NOT NULL,
     invoice_id UUID NOT NULL, -- Billing system's ID
     authorized_amount NUMERIC(15,2) NOT NULL,
@@ -47,16 +46,14 @@ CREATE TABLE payments (
 GRANT SELECT ON payments TO payments_user; 
 
 GRANT INSERT (
-        public_id, customer_id, invoice_id, authorized_amount, 
-        captured_amount, refunded_amount, currency, status,
-        processor_payment_reference
+        id, authorized_amount, captured_amount, refunded_amount, currency, 
+        status, processor_payment_reference
     ) ON payments TO payments_user;
 
 GRANT UPDATE (
         authorized_amount, captured_amount, refunded_amount, status
     ) ON payments TO payments_user;
 
-GRANT USAGE, SELECT ON SEQUENCE payments_internal_id_seq TO payments_user;
 
 -- Trigger for immutability
 CREATE OR REPLACE FUNCTION block_deletions()
