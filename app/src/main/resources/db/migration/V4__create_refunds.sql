@@ -31,6 +31,18 @@ GRANT UPDATE (
         processor_refund_reference
     ) ON refunds TO payments_app;
 
+-- Prevent anyone from deleting a refund record
+CREATE OR REPLACE FUNCTION block_deletions()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Deletions are not permitted on the refunds table.';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_no_delete_refunds
+BEFORE DELETE ON refunds
+FOR EACH ROW EXECUTE FUNCTION block_deletions();
+
 -- Ensure that refund currency always matches its payment's currency
 CREATE OR REPLACE FUNCTION validate_refund_currency_matches_payment()
 RETURNS TRIGGER AS $$
