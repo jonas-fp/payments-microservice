@@ -31,7 +31,8 @@ CREATE TABLE payments (
 
     CONSTRAINT chk_payments_status CHECK (
         status IN (
-            'AUTHORIZED', 'CAPTURED', 'PARTIALLY_REFUNDED', 'FULLY_REFUNDED'
+            'AUTHORIZED', 'CAPTURED', 'PARTIALLY_REFUNDED', 'FULLY_REFUNDED',
+            'VOIDED'
             )
     ),
     CONSTRAINT chk_payments_captured_less_than_or_equal_to_authorized CHECK (
