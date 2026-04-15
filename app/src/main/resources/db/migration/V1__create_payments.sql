@@ -42,7 +42,7 @@ CREATE TABLE payments (
     )
 );
 
--- Permissions for immutability
+-- Prevent the payments_user from changing anything it shouldn't
 GRANT SELECT ON payments TO payments_user; 
 
 GRANT INSERT (
@@ -54,8 +54,7 @@ GRANT UPDATE (
         authorized_amount, captured_amount, refunded_amount, status
     ) ON payments TO payments_user;
 
-
--- Trigger for immutability
+-- Prevent anyone from deleting a payment record
 CREATE OR REPLACE FUNCTION block_deletions()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -67,10 +66,11 @@ CREATE TRIGGER trg_no_delete_payments
 BEFORE DELETE ON payments
 FOR EACH ROW EXECUTE FUNCTION block_deletions();
 
--- Indexes for deduplication of processor ids and performance
+-- Prevent multiple payments with the same processor reference
 CREATE UNIQUE INDEX uk_payments_processor_payment_reference
     ON payments (processor_payment_reference)
     WHERE processor_payment_reference IS NOT NULL;
 
+-- Allow users to quickly look up payments by invoice
 CREATE INDEX idx_payments_invoice_id
     ON payments (invoice_id);
