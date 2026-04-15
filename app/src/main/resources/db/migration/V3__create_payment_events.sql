@@ -22,14 +22,14 @@ CREATE TABLE payment_events (
     )
 );
 
-GRANT SELECT ON payment_events TO payments_user;
+GRANT SELECT ON payment_events TO payments_app;
 
 GRANT INSERT (
     payment_id, event_type, processor_event_reference, processor_response,
      journal_entry_id, idempotency_key_id
-) ON payment_events TO payments_user;
+) ON payment_events TO payments_app;
 
-GRANT USAGE, SELECT ON SEQUENCE payment_events_id_seq TO payments_user;
+GRANT USAGE, SELECT ON SEQUENCE payment_events_id_seq TO payments_app;
 
 CREATE INDEX idx_payment_events_payment_id 
     ON payment_events(payment_id);

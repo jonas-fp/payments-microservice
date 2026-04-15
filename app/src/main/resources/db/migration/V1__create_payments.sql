@@ -42,17 +42,17 @@ CREATE TABLE payments (
     )
 );
 
--- Prevent the payments_user from changing anything it shouldn't
-GRANT SELECT ON payments TO payments_user; 
+-- Prevent the payments_app from changing anything it shouldn't
+GRANT SELECT ON payments TO payments_app; 
 
 GRANT INSERT (
         id, authorized_amount, captured_amount, refunded_amount, currency, 
         status, processor_payment_reference
-    ) ON payments TO payments_user;
+    ) ON payments TO payments_app;
 
 GRANT UPDATE (
         authorized_amount, captured_amount, refunded_amount, status
-    ) ON payments TO payments_user;
+    ) ON payments TO payments_app;
 
 -- Prevent anyone from deleting a payment record
 CREATE OR REPLACE FUNCTION block_deletions()
