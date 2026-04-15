@@ -47,12 +47,12 @@ CREATE TABLE payments (
 GRANT SELECT ON payments TO payments_app; 
 
 GRANT INSERT (
-        id, authorized_amount, captured_amount, refunded_amount, currency, 
-        status, processor_payment_reference
+        id, customer_id, invoice_id, authorized_amount, currency, status, 
+        processor_payment_reference
     ) ON payments TO payments_app;
 
 GRANT UPDATE (
-        authorized_amount, captured_amount, refunded_amount, status
+        status
     ) ON payments TO payments_app;
 
 -- Prevent anyone from deleting a payment record

@@ -53,6 +53,30 @@ BEFORE INSERT OR UPDATE ON refunds
 FOR EACH ROW
 EXECUTE FUNCTION validate_refund_currency_matches_payment();
 
+-- Ensure the payment's refunded amount and status gets auto updated
+CREATE OR REPLACE FUNCTION update_payment_refunded_amount()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.payments
+    SET refunded_amount = refunded_amount + NEW.amount,
+        status = CASE
+            WHEN (refunded_amount + NEW.amount) = captured_amount
+                THEN 'FULLY_REFUNDED'
+            ELSE 'PARTIALLY_REFUNDED'
+        END
+    WHERE id = NEW.payment_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER 
+SET search_path = public, pg_temp;
+
+CREATE TRIGGER trg_after_refund_insert
+AFTER INSERT ON refunds
+FOR EACH ROW EXECUTE FUNCTION update_payment_refunded_amount();
+
+REVOKE EXECUTE ON FUNCTION update_payment_refunded_amount() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION update_payment_refunded_amount() TO payments_app;
+
 -- Prevent the same payment event from causing multiple refunds
 CREATE UNIQUE INDEX uk_refunds_payment_event_id
     ON refunds (payment_event_id);
