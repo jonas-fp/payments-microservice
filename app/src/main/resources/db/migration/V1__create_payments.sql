@@ -1,5 +1,5 @@
 CREATE TABLE payments (
-    id UUID NOT NULL,
+    id UUID PRIMARY KEY,
     customer_id VARCHAR(128) NOT NULL,
     invoice_id UUID NOT NULL, -- Billing system's ID
     authorized_amount NUMERIC(15,2) NOT NULL,

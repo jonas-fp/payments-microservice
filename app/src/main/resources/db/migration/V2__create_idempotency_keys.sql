@@ -1,5 +1,5 @@
 CREATE TABLE idempotency_keys (
-    id UUID NOT NULL,
+    id UUID PRIMARY KEY,
     action_type VARCHAR(128) NOT NULL,
     customer_id VARCHAR(128) NOT NULL,
     idempotency_key VARCHAR(255) NOT NULL,
@@ -45,5 +45,3 @@ GRANT INSERT (
 GRANT UPDATE (
     event_id, resource_id, response_code, response_status
 ) ON idempotency_keys TO payments_app;
-
-GRANT USAGE, SELECT ON SEQUENCE idempotency_keys_id_seq TO payments_app;

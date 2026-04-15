@@ -1,11 +1,11 @@
 CREATE TABLE payment_events (
-    id UUID NOT NULL,
+    id UUID PRIMARY KEY,
     payment_id UUID NOT NULL,
     event_type VARCHAR(32) NOT NULL,
     processor_event_reference VARCHAR(128),
     processor_response JSONB,
     journal_entry_id BIGINT,
-    idempotency_key_id BIGINT NOT NULL,
+    idempotency_key_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_payment_events_payment 
@@ -28,8 +28,6 @@ GRANT INSERT (
     payment_id, event_type, processor_event_reference, processor_response,
      journal_entry_id, idempotency_key_id
 ) ON payment_events TO payments_app;
-
-GRANT USAGE, SELECT ON SEQUENCE payment_events_id_seq TO payments_app;
 
 CREATE INDEX idx_payment_events_payment_id 
     ON payment_events(payment_id);
