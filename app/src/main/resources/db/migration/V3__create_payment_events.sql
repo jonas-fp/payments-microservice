@@ -1,5 +1,5 @@
 CREATE TABLE payment_events (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, 
+    id UUID NOT NULL,
     payment_id UUID NOT NULL,
     event_type VARCHAR(32) NOT NULL,
     processor_event_reference VARCHAR(128),
@@ -9,7 +9,7 @@ CREATE TABLE payment_events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_payment_events_payment 
-        FOREIGN KEY (payment_id) REFERENCES payments (internal_id),
+        FOREIGN KEY (payment_id) REFERENCES payments (id),
     CONSTRAINT fk_payment_events_idempotency_key 
         FOREIGN KEY (idempotency_key_id) REFERENCES idempotency_keys (id),
 
