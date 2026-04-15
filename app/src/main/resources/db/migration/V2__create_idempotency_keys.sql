@@ -1,5 +1,5 @@
 CREATE TABLE idempotency_keys (
-    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id UUID NOT NULL,
     action_type VARCHAR(128) NOT NULL,
     customer_id VARCHAR(128) NOT NULL,
     idempotency_key VARCHAR(255) NOT NULL,
