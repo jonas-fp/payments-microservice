@@ -117,6 +117,10 @@ GRANT EXECUTE ON FUNCTION update_payment_refunded_amount() TO payments_app;
 CREATE UNIQUE INDEX uk_refunds_payment_event_id
     ON refunds (payment_event_id);
 
+-- Speed up lookups by payment id
+CREATE INDEX idx_refunds_payment_id
+    ON refunds (payment_id);
+
 -- Prevent two refunds from having the same processor refund reference
 CREATE UNIQUE INDEX uk_refunds_processor_refund_reference
     ON refunds (processor_refund_reference)
