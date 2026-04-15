@@ -65,6 +65,30 @@ BEFORE INSERT OR UPDATE ON refunds
 FOR EACH ROW
 EXECUTE FUNCTION validate_refund_currency_matches_payment();
 
+-- Ensure refunds can only reference refund-success events
+CREATE OR REPLACE FUNCTION validate_refund_success_event()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_event_type VARCHAR(32);
+BEGIN
+    SELECT pe.event_type
+    INTO v_event_type
+    FROM payment_events pe
+    WHERE pe.id = NEW.payment_event_id;
+
+    IF v_event_type IS DISTINCT FROM 'REFUND_SUCCESS' THEN
+        RAISE EXCEPTION 'Refund rows must reference a REFUND_SUCCESS ' 
+        ' payment event';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_refunds_require_refund_success_event
+BEFORE INSERT OR UPDATE ON refunds
+FOR EACH ROW EXECUTE FUNCTION validate_refund_success_event();
+
 -- Ensure the payment's refunded amount and status gets auto updated
 CREATE OR REPLACE FUNCTION update_payment_refunded_amount()
 RETURNS TRIGGER AS $$
