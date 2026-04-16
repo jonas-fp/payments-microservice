@@ -16,9 +16,11 @@ CREATE TABLE payment_events (
     CONSTRAINT chk_payment_events_event_type CHECK (
         event_type IN (
         'AUTHORIZE_REQUESTED', 'AUTHORIZE_SUCCESS', 'AUTHORIZE_FAILED',
+        'AUTHORIZE_VOIDED',
         'CAPTURE_REQUESTED', 'CAPTURE_SUCCESS', 'CAPTURE_FAILED',
+        'CAPTURE_VOIDED',
         'REFUND_REQUESTED', 'REFUND_SUCCESS', 'REFUND_FAILED',
-        'VOID_REQUESTED', 'VOID_SUCCESS', 'VOID_FAILED'
+        'REFUND_VOIDED'
     )
     )
 );
