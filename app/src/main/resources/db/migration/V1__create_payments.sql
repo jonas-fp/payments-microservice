@@ -52,7 +52,7 @@ GRANT INSERT (
     ) ON payments TO payments_app;
 
 GRANT UPDATE (
-        status
+        processor_payment_reference, status
     ) ON payments TO payments_app;
 
 -- Prevent anyone from deleting a payment record
