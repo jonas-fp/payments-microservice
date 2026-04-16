@@ -4,7 +4,6 @@ CREATE TABLE payment_events (
     event_type VARCHAR(32) NOT NULL,
     processor_event_reference VARCHAR(128),
     processor_response JSONB,
-    journal_entry_id BIGINT,
     idempotency_key_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -29,7 +28,7 @@ GRANT SELECT ON payment_events TO payments_app;
 
 GRANT INSERT (
     payment_id, event_type, processor_event_reference, processor_response,
-     journal_entry_id, idempotency_key_id
+    idempotency_key_id
 ) ON payment_events TO payments_app;
 
 CREATE INDEX idx_payment_events_payment_id 
