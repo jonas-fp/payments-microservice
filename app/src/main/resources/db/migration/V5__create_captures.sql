@@ -5,14 +5,12 @@ CREATE TABLE captures (
     amount NUMERIC(15,2) NOT NULL,
     currency VARCHAR(3) NOT NULL,
     processor_capture_reference VARCHAR(128),
-    journal_entry_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
     CONSTRAINT fk_captures_payment 
         FOREIGN KEY (payment_id) REFERENCES payments (id),
     CONSTRAINT fk_captures_payment_event
         FOREIGN KEY (payment_event_id) REFERENCES payment_events (id),
-    -- TODO: Link to journal entry table when it is created
     
     CONSTRAINT chk_capture_amount_positive CHECK (amount > 0),
     CONSTRAINT chk_no_micro_cents_captured

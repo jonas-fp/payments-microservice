@@ -5,7 +5,6 @@ CREATE TABLE refunds (
     amount NUMERIC(15,2) NOT NULL,
     currency VARCHAR(3) NOT NULL,
     processor_refund_reference VARCHAR(128),
-    journal_entry_id UUID NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
     CONSTRAINT fk_refunds_payment 
