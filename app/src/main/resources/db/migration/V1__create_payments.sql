@@ -56,7 +56,7 @@ GRANT UPDATE (
     ) ON payments TO payments_app;
 
 -- Prevent anyone from deleting a payment record
-CREATE OR REPLACE FUNCTION block_deletions()
+CREATE OR REPLACE FUNCTION block_payment_deletions()
 RETURNS TRIGGER AS $$
 BEGIN
     RAISE EXCEPTION 'Deletions are not permitted on the payments table.';
@@ -65,7 +65,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_no_delete_payments
 BEFORE DELETE ON payments
-FOR EACH ROW EXECUTE FUNCTION block_deletions();
+FOR EACH ROW EXECUTE FUNCTION block_payment_deletions();
 
 -- Prevent multiple payments with the same processor reference
 CREATE UNIQUE INDEX uk_payments_processor_payment_reference

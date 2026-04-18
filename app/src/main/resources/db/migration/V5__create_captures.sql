@@ -34,7 +34,7 @@ GRANT UPDATE (
     ) ON captures TO payments_app;
 
 -- Prevent anyone from deleting a capture record
-CREATE OR REPLACE FUNCTION block_deletions()
+CREATE OR REPLACE FUNCTION block_capture_deletions()
 RETURNS TRIGGER AS $$
 BEGIN
     RAISE EXCEPTION 'Deletions are not permitted on the captures table.';
@@ -43,7 +43,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_no_delete_captures
 BEFORE DELETE ON captures
-FOR EACH ROW EXECUTE FUNCTION block_deletions();
+FOR EACH ROW EXECUTE FUNCTION block_capture_deletions();
 
 -- Ensure that capture currency always matches its payment's currency
 CREATE OR REPLACE FUNCTION validate_capture_currency_matches_payment()
