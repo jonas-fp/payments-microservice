@@ -117,7 +117,28 @@ FOR EACH ROW EXECUTE FUNCTION update_payment_captured_amount();
 REVOKE EXECUTE ON FUNCTION update_payment_captured_amount() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION update_payment_captured_amount() TO payments_app;
 
--- Prevent the same payment event from causing multiple captures
+-- Ensure that each capture has a corresponding journal entry
+CREATE OR REPLACE FUNCTION validate_capture_has_journal_entry()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM journal_entries 
+        WHERE capture_id = NEW.id
+    ) THEN
+        RAISE EXCEPTION 'Capture must have a journal entry.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER trg_check_capture_has_journal_entry
+AFTER INSERT ON captures
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW
+EXECUTE FUNCTION validate_capture_has_journal_entry();
+
+-- Prevent the same payment event from causing multiple captures and speed 
+-- up lookups by payment event id
 CREATE UNIQUE INDEX uk_captures_payment_event_id
     ON captures (payment_event_id);
 

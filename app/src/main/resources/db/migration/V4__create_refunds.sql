@@ -114,7 +114,28 @@ FOR EACH ROW EXECUTE FUNCTION update_payment_refunded_amount();
 REVOKE EXECUTE ON FUNCTION update_payment_refunded_amount() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION update_payment_refunded_amount() TO payments_app;
 
--- Prevent the same payment event from causing multiple refunds
+-- Ensure that each refund has a corresponding journal entry
+CREATE OR REPLACE FUNCTION validate_refund_has_journal_entry()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM journal_entries 
+        WHERE refund_id = NEW.id
+    ) THEN
+        RAISE EXCEPTION 'Refund must have a journal entry.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER trg_check_refund_has_journal_entry
+AFTER INSERT ON refunds
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW
+EXECUTE FUNCTION validate_refund_has_journal_entry();
+
+-- Prevent the same payment event from causing multiple refunds and speed 
+-- up lookups by payment event id
 CREATE UNIQUE INDEX uk_refunds_payment_event_id
     ON refunds (payment_event_id);
 
