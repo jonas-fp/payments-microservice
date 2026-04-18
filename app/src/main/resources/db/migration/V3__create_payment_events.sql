@@ -31,5 +31,9 @@ GRANT INSERT (
     idempotency_key_id
 ) ON payment_events TO payments_app;
 
+CREATE UNIQUE INDEX uk_payment_events_processor_event_reference
+    ON payment_events (processor_event_reference)
+    WHERE processor_event_reference IS NOT NULL;
+
 CREATE INDEX idx_payment_events_payment_id 
     ON payment_events(payment_id);
