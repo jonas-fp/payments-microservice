@@ -53,7 +53,7 @@ BEGIN
         WHERE p.id = NEW.payment_id
           AND p.currency <> NEW.currency
     ) THEN
-        RAISE EXCEPTION 'capture currency must match payment currency';
+        RAISE EXCEPTION 'capture currency must match payment currency.';
     END IF;
 
     RETURN NEW;
@@ -78,7 +78,7 @@ BEGIN
 
     IF v_event_type IS DISTINCT FROM 'CAPTURE_SUCCESS' THEN
         RAISE EXCEPTION 'Capture rows must reference a CAPTURE_SUCCESS '
-        ' payment event';
+        ' payment event.';
     END IF;
 
     RETURN NEW;
