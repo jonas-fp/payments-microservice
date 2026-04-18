@@ -102,7 +102,7 @@ BEGIN
         AND (captured_amount + NEW.amount) = authorized_amount;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'Only full captures are allowed or payment not found';
+        RAISE EXCEPTION 'Only full captures are allowed or payment not found.';
     END IF;
 
     RETURN NEW;
