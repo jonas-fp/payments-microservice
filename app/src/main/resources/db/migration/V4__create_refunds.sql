@@ -79,7 +79,7 @@ BEGIN
 
     IF v_event_type IS DISTINCT FROM 'REFUND_SUCCESS' THEN
         RAISE EXCEPTION 'Refund rows must reference a REFUND_SUCCESS ' 
-        ' payment event';
+        ' payment event.';
     END IF;
 
     RETURN NEW;
