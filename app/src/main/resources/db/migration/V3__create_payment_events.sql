@@ -63,3 +63,16 @@ AFTER INSERT ON payment_events
 DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW
 EXECUTE FUNCTION validate_event_has_capture_or_refund_record();
+
+-- Ensure that the audit trail is immutable
+CREATE OR REPLACE FUNCTION block_payment_event_deletions_and_updates()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Deletions are not permitted on the payment_events '
+    ' table.';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_no_delete_payment_events
+BEFORE UPDATE OR DELETE ON payment_events
+FOR EACH ROW EXECUTE FUNCTION block_payment_event_deletions_and_updates();
