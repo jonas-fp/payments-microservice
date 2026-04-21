@@ -1,3 +1,6 @@
+-- NOTE: reconciliation is modeled at the payment_id level rather than the
+--       capture/refund level. This may need to be changed in the future, as I
+--       learn more about how to work with payment processors.
 CREATE TABLE reconciliation_runs (
     id UUID PRIMARY KEY,
     business_date DATE NOT NULL,
