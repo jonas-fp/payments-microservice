@@ -90,24 +90,37 @@ CREATE TRIGGER trg_protect_journal_lines
 BEFORE UPDATE OR DELETE ON journal_lines
 FOR EACH ROW EXECUTE FUNCTION block_ledger_updates_and_deletes();
 
--- Ensure that every journal entry has at least two lines and is balanced
+-- Ensure that every journal entry has at least two lines and is balanced by 
+-- currency
 CREATE OR REPLACE FUNCTION validate_journal_is_balanced()
 RETURNS TRIGGER AS $$
 DECLARE
-    line_sum NUMERIC;
+    v_unbalanced_currency CHAR(3);
+    v_excess_amount NUMERIC;
 BEGIN
-    -- Sum the lines: Debits as positive, Credits as negative
-    SELECT SUM(CASE WHEN direction = 'DEBIT' THEN amount ELSE -amount END)
-    INTO line_sum
-    FROM journal_lines
-    WHERE journal_entry_id = NEW.id;
-
-    IF line_sum IS NULL THEN
-        RAISE EXCEPTION 'Journal entry % has no journal lines.', NEW.id;
+    -- Ensure at least two lines exist
+    IF (SELECT count(*) FROM journal_lines WHERE journal_entry_id = NEW.id) < 2 
+    THEN
+        RAISE EXCEPTION 'Journal entry % has less than two journal lines.', 
+        NEW.id;
     END IF;
+    
+    -- Check if any currency group for this journal entry does not sum to zero
+    SELECT currency, SUM(
+        CASE WHEN direction = 'DEBIT' THEN amount ELSE -amount END
+        ) 
+    INTO v_unbalanced_currency, v_excess_amount
+    FROM journal_lines
+    WHERE journal_entry_id = NEW.id
+    GROUP BY currency
+    HAVING SUM(CASE WHEN direction = 'DEBIT' THEN amount ELSE -amount END) != 0
+    LIMIT 1;
 
-    IF line_sum != 0 THEN
-        RAISE EXCEPTION 'Journal entry % is unbalanced by %.', NEW.id, line_sum;
+    -- If we found an unbalanced currency, raise an error
+    IF v_unbalanced_currency IS NOT NULL THEN
+        RAISE EXCEPTION 'Journal entry % is unbalanced for currency %. Balance '
+        'should be zero, but is % instead.', 
+            NEW.id, v_unbalanced_currency, v_excess_amount;
     END IF;
 
     RETURN NEW;
