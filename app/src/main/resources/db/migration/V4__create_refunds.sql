@@ -65,20 +65,27 @@ BEFORE INSERT OR UPDATE ON refunds
 FOR EACH ROW
 EXECUTE FUNCTION validate_refund_currency_matches_payment();
 
--- Ensure refunds can only reference refund-success events
+-- Ensure refunds can only reference refund-success events with the same 
+-- payment_id as the refund
 CREATE OR REPLACE FUNCTION validate_refund_success_event()
 RETURNS TRIGGER AS $$
 DECLARE
     v_event_type VARCHAR(32);
+    v_payment_id UUID;
 BEGIN
-    SELECT pe.event_type
-    INTO v_event_type
+    SELECT pe.event_type, pe.payment_id
+    INTO v_event_type, v_payment_id
     FROM payment_events pe
     WHERE pe.id = NEW.payment_event_id;
 
     IF v_event_type IS DISTINCT FROM 'REFUND_SUCCESS' THEN
         RAISE EXCEPTION 'Refund rows must reference a REFUND_SUCCESS ' 
         ' payment event.';
+    END IF;
+
+    IF v_payment_id IS DISTINCT FROM NEW.payment_id THEN
+        RAISE EXCEPTION 'Refund rows must reference a refund-success event ' 
+        'with the same payment_id as the refund.';
     END IF;
 
     RETURN NEW;
