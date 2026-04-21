@@ -44,13 +44,13 @@ CREATE OR REPLACE FUNCTION validate_event_has_capture_or_refund_record()
 RETURNS TRIGGER AS $$
 BEGIN
     IF (NEW.event_type = 'CAPTURE_SUCCESS') THEN
-        IF NOT EXISTS (SELECT 1 FROM captures WHERE event_id = NEW.id) THEN
-            RAISE EXCEPTION 'CAPTURE_SUCCESS event must have a corresponding ' 
+        IF NOT EXISTS (SELECT 1 FROM captures WHERE payment_event_id = NEW.id) 
+        THEN RAISE EXCEPTION 'CAPTURE_SUCCESS event must have a corresponding ' 
                             'record in captures table.';
         END IF;
     ELSIF (NEW.event_type = 'REFUND_SUCCESS') THEN
-        IF NOT EXISTS (SELECT 1 FROM refunds WHERE event_id = NEW.id) THEN
-            RAISE EXCEPTION 'REFUND_SUCCESS event must have a corresponding ' 
+        IF NOT EXISTS (SELECT 1 FROM refunds WHERE payment_event_id = NEW.id) 
+        THEN RAISE EXCEPTION 'REFUND_SUCCESS event must have a corresponding ' 
                             'record in refunds table.';
         END IF;
     END IF;
