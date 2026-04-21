@@ -43,5 +43,5 @@ GRANT INSERT (
 ) ON idempotency_keys TO payments_app;
 
 GRANT UPDATE (
-    event_id, resource_id, response_code, response_status
+    event_id, resource_id, response_body, response_code, response_status
 ) ON idempotency_keys TO payments_app;
