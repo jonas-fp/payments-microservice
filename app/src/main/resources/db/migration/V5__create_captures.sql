@@ -95,7 +95,7 @@ RETURNS TRIGGER AS $$
 BEGIN
     UPDATE public.payments
     SET captured_amount = captured_amount + NEW.amount,
-        status = 'FULLY_CAPTURED'
+        status = 'CAPTURED'
     WHERE id = NEW.payment_id
         AND (captured_amount + NEW.amount) = authorized_amount;
 
