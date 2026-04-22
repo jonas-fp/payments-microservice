@@ -1,0 +1,155 @@
+CREATE TABLE refunds (
+    id UUID PRIMARY KEY,
+    payment_id UUID NOT NULL, 
+    payment_event_id UUID NOT NULL,
+    amount NUMERIC(15,2) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    processor_refund_reference VARCHAR(128),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    
+    CONSTRAINT fk_refunds_payment 
+        FOREIGN KEY (payment_id) REFERENCES payments (id),
+    CONSTRAINT fk_refunds_payment_event
+        FOREIGN KEY (payment_event_id) REFERENCES payment_events (id),
+    
+    CONSTRAINT chk_amount_positive CHECK (amount > 0),
+    CONSTRAINT chk_no_micro_cents_refunded
+        CHECK (amount * 100 = TRUNC(amount * 100)),
+
+    CONSTRAINT chk_valid_currency_code CHECK (currency IN ('USD', 'CAD'))
+);
+
+-- Prevent the payments_app from changing anything it shouldn't
+GRANT SELECT ON refunds TO payments_app; 
+
+GRANT INSERT (
+        id, payment_id, payment_event_id, amount, currency, 
+        processor_refund_reference
+    ) ON refunds TO payments_app;
+
+GRANT UPDATE (
+        processor_refund_reference
+    ) ON refunds TO payments_app;
+
+-- Prevent anyone from deleting a refund record
+CREATE OR REPLACE FUNCTION block_refund_deletions()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Deletions are not permitted on the refunds table.';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_no_delete_refunds
+BEFORE DELETE ON refunds
+FOR EACH ROW EXECUTE FUNCTION block_refund_deletions();
+
+-- Ensure that refund currency always matches its payment's currency
+CREATE OR REPLACE FUNCTION validate_refund_currency_matches_payment()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM payments p
+        WHERE p.id = NEW.payment_id
+          AND p.currency <> NEW.currency
+    ) THEN
+        RAISE EXCEPTION 'refund currency must match payment currency.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_refunds_currency_matches_payment
+BEFORE INSERT OR UPDATE ON refunds
+FOR EACH ROW
+EXECUTE FUNCTION validate_refund_currency_matches_payment();
+
+-- Ensure refunds can only reference refund-success events with the same 
+-- payment_id as the refund
+CREATE OR REPLACE FUNCTION validate_refund_success_event()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_event_type VARCHAR(32);
+    v_payment_id UUID;
+BEGIN
+    SELECT pe.event_type, pe.payment_id
+    INTO v_event_type, v_payment_id
+    FROM payment_events pe
+    WHERE pe.id = NEW.payment_event_id;
+
+    IF v_event_type IS DISTINCT FROM 'REFUND_SUCCESS' THEN
+        RAISE EXCEPTION 'Refund rows must reference a REFUND_SUCCESS ' 
+        ' payment event.';
+    END IF;
+
+    IF v_payment_id IS DISTINCT FROM NEW.payment_id THEN
+        RAISE EXCEPTION 'Refund rows must reference a refund-success event ' 
+        'with the same payment_id as the refund.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_refunds_require_refund_success_event
+BEFORE INSERT OR UPDATE ON refunds
+FOR EACH ROW EXECUTE FUNCTION validate_refund_success_event();
+
+-- Ensure the payment's refunded amount and status gets auto updated
+CREATE OR REPLACE FUNCTION update_payment_refunded_amount()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.payments
+    SET refunded_amount = refunded_amount + NEW.amount,
+        status = CASE
+            WHEN (refunded_amount + NEW.amount) = captured_amount
+                THEN 'FULLY_REFUNDED'
+            ELSE 'PARTIALLY_REFUNDED'
+        END
+    WHERE id = NEW.payment_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER 
+SET search_path = public, pg_temp;
+
+CREATE TRIGGER trg_after_refund_insert
+AFTER INSERT ON refunds
+FOR EACH ROW EXECUTE FUNCTION update_payment_refunded_amount();
+
+REVOKE EXECUTE ON FUNCTION update_payment_refunded_amount() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION update_payment_refunded_amount() TO payments_app;
+
+-- Ensure that each refund has a corresponding journal entry
+CREATE OR REPLACE FUNCTION validate_refund_has_journal_entry()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM journal_entries 
+        WHERE refund_id = NEW.id
+    ) THEN
+        RAISE EXCEPTION 'Refund must have a journal entry.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER trg_check_refund_has_journal_entry
+AFTER INSERT ON refunds
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW
+EXECUTE FUNCTION validate_refund_has_journal_entry();
+
+-- Prevent the same payment event from causing multiple refunds and speed 
+-- up lookups by payment event id
+CREATE UNIQUE INDEX uk_refunds_payment_event_id
+    ON refunds (payment_event_id);
+
+-- Speed up lookups by payment id
+CREATE INDEX idx_refunds_payment_id
+    ON refunds (payment_id);
+
+-- Prevent two refunds from having the same processor refund reference
+CREATE UNIQUE INDEX uk_refunds_processor_refund_reference
+    ON refunds (processor_refund_reference)
+    WHERE processor_refund_reference IS NOT NULL;

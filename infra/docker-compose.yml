@@ -9,6 +9,7 @@ services:
       POSTGRES_USER: payments_user
       POSTGRES_PASSWORD: payments_password
     volumes:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
       - postgres_data:/var/lib/postgresql/data
 
 volumes:
