@@ -25,7 +25,8 @@ class HelloControllerTest {
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("payments")
             .withUsername("payments")
-            .withPassword("payments");
+            .withPassword("payments")
+            .withInitScript("init-db.sql");
 
     @Autowired
     private MockMvc mockMvc;

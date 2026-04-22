@@ -17,7 +17,8 @@ class PaymentProcessingSystemApplicationTests {
 	static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
 			.withDatabaseName("payments")
 			.withUsername("payments")
-			.withPassword("payments");
+			.withPassword("app_password")
+			.withInitScript("init-db.sql");
 
 	@Test
 	void contextLoads() {
