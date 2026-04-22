@@ -1,5 +1,5 @@
 app/HELP.md
-.env
+*.env
 target/
 !**/src/main/**/target/
 !**/src/test/**/target/
