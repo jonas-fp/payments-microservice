@@ -6,7 +6,6 @@ CREATE TABLE idempotency_keys (
     request_hash VARCHAR(128) NOT NULL,
     response_body JSONB,
     event_id UUID,
-    resource_type VARCHAR(64) NOT NULL, 
     resource_id UUID, 
     response_code INTEGER,
     response_status VARCHAR(128) NOT NULL,
@@ -22,9 +21,6 @@ CREATE TABLE idempotency_keys (
     CONSTRAINT chk_response_status CHECK (
         response_status in ('STARTED', 'COMPLETED', 'FAILED')
     ),
-    CONSTRAINT chk_resource_type CHECK (
-        resource_type in ('PAYMENT', 'REFUND')
-    ),
     CONSTRAINT chk_idempotency_keys_response_code CHECK (
         response_code IS NULL OR (response_code BETWEEN 100 AND 599)
     ),
@@ -39,7 +35,7 @@ GRANT SELECT ON idempotency_keys TO payments_app;
 
 GRANT INSERT (
     action_type, customer_id, idempotency_key, request_hash, response_body,
-    event_id, resource_type, resource_id, response_code, response_status
+    event_id, resource_id, response_code, response_status
 ) ON idempotency_keys TO payments_app;
 
 GRANT UPDATE (
