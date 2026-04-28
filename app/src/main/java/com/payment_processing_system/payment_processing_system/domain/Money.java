@@ -1,11 +1,12 @@
 package com.payment_processing_system.payment_processing_system.domain;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
-public record Money(long amountMinor, CurrencyCode currency) {
+public record Money(BigDecimal amountMinor, CurrencyCode currency) {
 
     public Money {
-        if (amountMinor < 0) {
+        if (amountMinor.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException(
                     "amountMinor must be non-negative");
         }
@@ -13,20 +14,20 @@ public record Money(long amountMinor, CurrencyCode currency) {
                 "currency must not be null");
     }
 
-    public static Money of(long amountMinor, String currency) {
+    public static Money of(BigDecimal amountMinor, String currency) {
         return new Money(amountMinor, CurrencyCode.of(currency));
     }
 
     public Money plus(Money other) {
         requireSameCurrency(other);
-        return new Money(Math.addExact(amountMinor, other.amountMinor),
+        return new Money(amountMinor.add(other.amountMinor),
                 currency);
     }
 
     public Money minus(Money other) {
         requireSameCurrency(other);
-        long result = Math.subtractExact(amountMinor, other.amountMinor);
-        if (result < 0) {
+        BigDecimal result = amountMinor.subtract(other.amountMinor);
+        if (result.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException(
                     "resulting amountMinor must be non-negative");
         }
@@ -34,7 +35,7 @@ public record Money(long amountMinor, CurrencyCode currency) {
     }
 
     public boolean isZero() {
-        return amountMinor == 0;
+        return amountMinor.compareTo(BigDecimal.ZERO) == 0;
     }
 
     private void requireSameCurrency(Money other) {
