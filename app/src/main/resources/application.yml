@@ -22,6 +22,10 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  jackson:
+    generator:
+      WRITE_BIGDECIMAL_AS_PLAIN: true
+
 management:
   endpoints:
     web:
