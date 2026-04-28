@@ -24,7 +24,7 @@ spring:
 
   jackson:
     generator:
-      WRITE_BIGDECIMAL_AS_PLAIN: true
+      write-bigdecimal-as-plain: true
 
 management:
   endpoints:
