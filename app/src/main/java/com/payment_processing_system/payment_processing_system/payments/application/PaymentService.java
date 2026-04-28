@@ -94,7 +94,7 @@ public class PaymentService {
         payment.setCustomerId(request.customerId());
         payment.setInvoiceId(request.invoiceId());
         payment.setAuthorizedAmount(
-                request.amountMinor().divide(BigDecimal.valueOf(100)));
+                request.amountMinor().movePointLeft(2));
         payment.setCapturedAmount(BigDecimal.ZERO);
         payment.setRefundedAmount(BigDecimal.ZERO);
         payment.setCurrency(request.currency());
@@ -113,8 +113,7 @@ public class PaymentService {
         // 6. Complete Idempotency Key
         PaymentResponse response = new PaymentResponse(payment.getId(),
                 payment.getCustomerId(), payment.getInvoiceId(),
-                payment.getAuthorizedAmount().multiply(BigDecimal.valueOf(100))
-                        .stripTrailingZeros(),
+                payment.getAuthorizedAmount().movePointRight(2),
                 payment.getCurrency(), payment.getStatus(),
                 payment.getProcessorPaymentReference());
 
