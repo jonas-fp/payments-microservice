@@ -21,6 +21,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.AuthorizePaymentRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
+import com.payment_processing_system.payment_processing_system.repository.PaymentRepository;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -120,5 +125,47 @@ class PaymentControllerIntegrationTest {
                                 .content(objectMapper
                                                 .writeValueAsString(request2)))
                                 .andExpect(status().isUnprocessableEntity());
+        }
+
+        @Test
+        void capture_validRequest_returnsCreated() throws Exception {
+                // 1. Authorize a payment first
+                String authIdempotencyKey = UUID.randomUUID().toString();
+                AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+                                "customer-1", UUID.randomUUID(),
+                                new BigDecimal("10000"), "USD");
+
+                String authResponseJson = mockMvc
+                                .perform(post("/v1/payments/authorize").header(
+                                                "Idempotency-Key",
+                                                authIdempotencyKey)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper
+                                                                .writeValueAsString(
+                                                                                authRequest)))
+                                .andExpect(status().isCreated()).andReturn()
+                                .getResponse().getContentAsString();
+
+                PaymentResponse authResponse = objectMapper.readValue(
+                                authResponseJson, PaymentResponse.class);
+                UUID paymentId = authResponse.id();
+
+                // 2. Capture the payment
+                String capIdempotencyKey = UUID.randomUUID().toString();
+                CapturePaymentRequest capRequest = new CapturePaymentRequest(
+                                "customer-1", new BigDecimal("10000"), "USD");
+
+                mockMvc.perform(post("/v1/payments/" + paymentId + "/capture")
+                                .header("Idempotency-Key", capIdempotencyKey)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(
+                                                capRequest)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.paymentId")
+                                                .value(paymentId.toString()))
+                                .andExpect(jsonPath("$.status")
+                                                .value("CAPTURED"))
+                                .andExpect(jsonPath("$.amountMinor")
+                                                .value(10000));
         }
 }
