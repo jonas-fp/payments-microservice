@@ -37,206 +37,187 @@ import com.payment_processing_system.payment_processing_system.repository.Paymen
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
 
-        @Mock
-        private PaymentRepository paymentRepository;
-        @Mock
-        private PaymentEventRepository paymentEventRepository;
-        @Mock
-        private IdempotencyKeyRepository idempotencyKeyRepository;
-        @Mock
-        private CaptureRepository captureRepository;
-        @Mock
-        private JournalEntryRepository journalEntryRepository;
-        @Mock
-        private JournalLineRepository journalLineRepository;
-        @Mock
-        private LedgerAccountRepository ledgerAccountRepository;
+    @Mock
+    private PaymentRepository paymentRepository;
+    @Mock
+    private PaymentEventRepository paymentEventRepository;
+    @Mock
+    private IdempotencyKeyRepository idempotencyKeyRepository;
+    @Mock
+    private CaptureRepository captureRepository;
+    @Mock
+    private JournalEntryRepository journalEntryRepository;
+    @Mock
+    private JournalLineRepository journalLineRepository;
+    @Mock
+    private LedgerAccountRepository ledgerAccountRepository;
 
-        private ObjectMapper objectMapper = new ObjectMapper();
-        private PaymentService paymentService;
+    private ObjectMapper objectMapper = new ObjectMapper();
+    private PaymentService paymentService;
 
-        @BeforeEach
-        void setUp() {
-                paymentService = new PaymentService(paymentRepository,
-                                paymentEventRepository,
-                                idempotencyKeyRepository, captureRepository,
-                                journalEntryRepository, journalLineRepository,
-                                ledgerAccountRepository, objectMapper);
+    @BeforeEach
+    void setUp() {
+        paymentService = new PaymentService(paymentRepository,
+                paymentEventRepository, idempotencyKeyRepository,
+                captureRepository, journalEntryRepository,
+                journalLineRepository, ledgerAccountRepository, objectMapper);
+    }
+
+    @Test
+    void authorize_newRequest_createsPaymentAndEvents() {
+        // Given
+        String idempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest request = new AuthorizePaymentRequest(
+                "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+                "USD");
+
+        when(idempotencyKeyRepository
+                .findByCustomerIdAndIdempotencyKeyAndActionType(any(), any(),
+                        any())).thenReturn(Optional.empty());
+
+        when(idempotencyKeyRepository.save(any(IdempotencyKeyEntity.class)))
+                .thenAnswer(invocation -> {
+                    IdempotencyKeyEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        when(paymentRepository.save(any(PaymentEntity.class)))
+                .thenAnswer(invocation -> {
+                    PaymentEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        when(paymentEventRepository.save(any(PaymentEventEntity.class)))
+                .thenAnswer(invocation -> {
+                    PaymentEventEntity entity = invocation.getArgument(0);
+                    entity.setId(UUID.randomUUID());
+                    return entity;
+                });
+
+        // When
+        PaymentResponse response = paymentService.authorize(idempotencyKey,
+                request);
+
+        // Then
+        assertThat(response.customerId()).isEqualTo("customer-1");
+        assertThat(response.amountMinor()).isEqualTo(new BigDecimal("10000"));
+        assertThat(response.status()).isEqualTo(PaymentStatus.AUTHORIZED);
+
+        verify(idempotencyKeyRepository, times(2))
+                .save(any(IdempotencyKeyEntity.class));
+        verify(paymentRepository).save(any(PaymentEntity.class));
+        verify(paymentEventRepository).save(any(PaymentEventEntity.class));
+    }
+
+    @Test
+    void authorize_completedRequest_returnsCachedResponse()
+            throws JsonProcessingException {
+        // Given
+        String idempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest request = new AuthorizePaymentRequest(
+                "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+                "USD");
+        String requestHash = calculateHash(request);
+
+        PaymentResponse cachedResponse = new PaymentResponse(UUID.randomUUID(),
+                "customer-1", request.invoiceId(), request.amountMinor(),
+                request.currency(), PaymentStatus.AUTHORIZED, "proc_123");
+
+        IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
+        existingKey.setCustomerId("customer-1");
+        existingKey.setIdempotencyKey(idempotencyKey);
+        existingKey.setActionType("AUTHORIZE");
+        existingKey.setRequestHash(requestHash);
+        existingKey.setResponseStatus("COMPLETED");
+        existingKey.setResponseBody(objectMapper.valueToTree(cachedResponse));
+
+        when(idempotencyKeyRepository
+                .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
+                        idempotencyKey, "AUTHORIZE"))
+                                .thenReturn(Optional.of(existingKey));
+
+        // When
+        PaymentResponse response = paymentService.authorize(idempotencyKey,
+                request);
+
+        // Then
+        assertThat(response).usingRecursiveComparison()
+                .withEqualsForType((b1, b2) -> b1.compareTo(b2) == 0,
+                        BigDecimal.class)
+                .isEqualTo(cachedResponse);
+        verify(paymentRepository, never()).save(any());
+        verify(paymentEventRepository, never()).save(any());
+    }
+
+    @Test
+    void authorize_startedRequest_throwsException() {
+        // Given
+        String idempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest request = new AuthorizePaymentRequest(
+                "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+                "USD");
+        String requestHash = calculateHash(request);
+
+        IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
+        existingKey.setCustomerId("customer-1");
+        existingKey.setIdempotencyKey(idempotencyKey);
+        existingKey.setActionType("AUTHORIZE");
+        existingKey.setRequestHash(requestHash);
+        existingKey.setResponseStatus("STARTED");
+
+        when(idempotencyKeyRepository
+                .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
+                        idempotencyKey, "AUTHORIZE"))
+                                .thenReturn(Optional.of(existingKey));
+
+        // When / Then
+        assertThatThrownBy(
+                () -> paymentService.authorize(idempotencyKey, request))
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessageContaining("already in progress");
+    }
+
+    @Test
+    void authorize_differentRequestBody_throwsException() {
+        // Given
+        String idempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest request = new AuthorizePaymentRequest(
+                "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+                "USD");
+
+        IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
+        existingKey.setCustomerId("customer-1");
+        existingKey.setIdempotencyKey(idempotencyKey);
+        existingKey.setActionType("AUTHORIZE");
+        existingKey.setRequestHash("different-hash");
+
+        when(idempotencyKeyRepository
+                .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
+                        idempotencyKey, "AUTHORIZE"))
+                                .thenReturn(Optional.of(existingKey));
+
+        // When / Then
+        assertThatThrownBy(
+                () -> paymentService.authorize(idempotencyKey, request))
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessageContaining(
+                                "Idempotency key reuse with different request"
+                                        + " body");
+    }
+
+    private String calculateHash(AuthorizePaymentRequest request) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest
+                    .getInstance("SHA-256");
+            String json = objectMapper.writeValueAsString(request);
+            byte[] hashBytes = digest.digest(
+                    json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hashBytes);
+        } catch (java.security.NoSuchAlgorithmException
+                | JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
-
-        @Test
-        void authorize_newRequest_createsPaymentAndEvents() {
-                // Given
-                String idempotencyKey = UUID.randomUUID().toString();
-                AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-                                "customer-1", UUID.randomUUID(),
-                                new BigDecimal("10000"), "USD");
-
-                when(idempotencyKeyRepository
-                                .findByCustomerIdAndIdempotencyKeyAndActionType(
-                                                any(), any(), any()))
-                                                                .thenReturn(Optional
-                                                                                .empty());
-
-                when(idempotencyKeyRepository
-                                .save(any(IdempotencyKeyEntity.class)))
-                                                .thenAnswer(invocation -> {
-                                                        IdempotencyKeyEntity entity = invocation
-                                                                        .getArgument(0);
-                                                        entity.setId(UUID
-                                                                        .randomUUID());
-                                                        return entity;
-                                                });
-
-                when(paymentRepository.save(any(PaymentEntity.class)))
-                                .thenAnswer(invocation -> {
-                                        PaymentEntity entity = invocation
-                                                        .getArgument(0);
-                                        entity.setId(UUID.randomUUID());
-                                        return entity;
-                                });
-
-                when(paymentEventRepository.save(any(PaymentEventEntity.class)))
-                                .thenAnswer(invocation -> {
-                                        PaymentEventEntity entity = invocation
-                                                        .getArgument(0);
-                                        entity.setId(UUID.randomUUID());
-                                        return entity;
-                                });
-
-                // When
-                PaymentResponse response = paymentService
-                                .authorize(idempotencyKey, request);
-
-                // Then
-                assertThat(response.customerId()).isEqualTo("customer-1");
-                assertThat(response.amountMinor())
-                                .isEqualTo(new BigDecimal("10000"));
-                assertThat(response.status())
-                                .isEqualTo(PaymentStatus.AUTHORIZED);
-
-                verify(idempotencyKeyRepository, times(2))
-                                .save(any(IdempotencyKeyEntity.class));
-                verify(paymentRepository).save(any(PaymentEntity.class));
-                verify(paymentEventRepository)
-                                .save(any(PaymentEventEntity.class));
-        }
-
-        @Test
-        void authorize_completedRequest_returnsCachedResponse()
-                        throws JsonProcessingException {
-                // Given
-                String idempotencyKey = UUID.randomUUID().toString();
-                AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-                                "customer-1", UUID.randomUUID(),
-                                new BigDecimal("10000"), "USD");
-                String requestHash = calculateHash(request);
-
-                PaymentResponse cachedResponse = new PaymentResponse(
-                                UUID.randomUUID(), "customer-1",
-                                request.invoiceId(), request.amountMinor(),
-                                request.currency(), PaymentStatus.AUTHORIZED,
-                                "proc_123");
-
-                IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
-                existingKey.setCustomerId("customer-1");
-                existingKey.setIdempotencyKey(idempotencyKey);
-                existingKey.setActionType("AUTHORIZE");
-                existingKey.setRequestHash(requestHash);
-                existingKey.setResponseStatus("COMPLETED");
-                existingKey.setResponseBody(
-                                objectMapper.valueToTree(cachedResponse));
-
-                when(idempotencyKeyRepository
-                                .findByCustomerIdAndIdempotencyKeyAndActionType(
-                                                "customer-1", idempotencyKey,
-                                                "AUTHORIZE")).thenReturn(
-                                                                Optional.of(existingKey));
-
-                // When
-                PaymentResponse response = paymentService
-                                .authorize(idempotencyKey, request);
-
-                // Then
-                assertThat(response).usingRecursiveComparison()
-                                .withEqualsForType(
-                                                (b1, b2) -> b1.compareTo(
-                                                                b2) == 0,
-                                                BigDecimal.class)
-                                .isEqualTo(cachedResponse);
-                verify(paymentRepository, never()).save(any());
-                verify(paymentEventRepository, never()).save(any());
-        }
-
-        @Test
-        void authorize_startedRequest_throwsException() {
-                // Given
-                String idempotencyKey = UUID.randomUUID().toString();
-                AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-                                "customer-1", UUID.randomUUID(),
-                                new BigDecimal("10000"), "USD");
-                String requestHash = calculateHash(request);
-
-                IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
-                existingKey.setCustomerId("customer-1");
-                existingKey.setIdempotencyKey(idempotencyKey);
-                existingKey.setActionType("AUTHORIZE");
-                existingKey.setRequestHash(requestHash);
-                existingKey.setResponseStatus("STARTED");
-
-                when(idempotencyKeyRepository
-                                .findByCustomerIdAndIdempotencyKeyAndActionType(
-                                                "customer-1", idempotencyKey,
-                                                "AUTHORIZE")).thenReturn(
-                                                                Optional.of(existingKey));
-
-                // When / Then
-                assertThatThrownBy(() -> paymentService.authorize(
-                                idempotencyKey, request)).isInstanceOf(
-                                                IllegalStateException.class)
-                                                .hasMessageContaining(
-                                                                "already in progress");
-        }
-
-        @Test
-        void authorize_differentRequestBody_throwsException() {
-                // Given
-                String idempotencyKey = UUID.randomUUID().toString();
-                AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-                                "customer-1", UUID.randomUUID(),
-                                new BigDecimal("10000"), "USD");
-
-                IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
-                existingKey.setCustomerId("customer-1");
-                existingKey.setIdempotencyKey(idempotencyKey);
-                existingKey.setActionType("AUTHORIZE");
-                existingKey.setRequestHash("different-hash");
-
-                when(idempotencyKeyRepository
-                                .findByCustomerIdAndIdempotencyKeyAndActionType(
-                                                "customer-1", idempotencyKey,
-                                                "AUTHORIZE")).thenReturn(
-                                                                Optional.of(existingKey));
-
-                // When / Then
-                assertThatThrownBy(() -> paymentService.authorize(
-                                idempotencyKey, request)).isInstanceOf(
-                                                IllegalStateException.class)
-                                                .hasMessageContaining(
-                                                                "Idempotency key reuse with different request body");
-        }
-
-        private String calculateHash(AuthorizePaymentRequest request) {
-                try {
-                        java.security.MessageDigest digest = java.security.MessageDigest
-                                        .getInstance("SHA-256");
-                        String json = objectMapper.writeValueAsString(request);
-                        byte[] hashBytes = digest.digest(json.getBytes(
-                                        java.nio.charset.StandardCharsets.UTF_8));
-                        return java.util.HexFormat.of().formatHex(hashBytes);
-                } catch (java.security.NoSuchAlgorithmException
-                                | JsonProcessingException e) {
-                        throw new RuntimeException(e);
-                }
-        }
+    }
 }
