@@ -52,7 +52,7 @@ CREATE TABLE journal_lines (
     ledger_account_id UUID NOT NULL,
     direction VARCHAR(16) NOT NULL,
     amount NUMERIC(15,2) NOT NULL,
-    currency CHAR(3) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_journal_lines_journal_entry
         FOREIGN KEY (journal_entry_id) REFERENCES journal_entries (id),
