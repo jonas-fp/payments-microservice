@@ -26,7 +26,11 @@ import com.payment_processing_system.payment_processing_system.entity.PaymentEnt
 import com.payment_processing_system.payment_processing_system.entity.PaymentEventEntity;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.AuthorizePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
+import com.payment_processing_system.payment_processing_system.repository.CaptureRepository;
 import com.payment_processing_system.payment_processing_system.repository.IdempotencyKeyRepository;
+import com.payment_processing_system.payment_processing_system.repository.JournalEntryRepository;
+import com.payment_processing_system.payment_processing_system.repository.JournalLineRepository;
+import com.payment_processing_system.payment_processing_system.repository.LedgerAccountRepository;
 import com.payment_processing_system.payment_processing_system.repository.PaymentEventRepository;
 import com.payment_processing_system.payment_processing_system.repository.PaymentRepository;
 
@@ -39,6 +43,14 @@ class PaymentServiceTest {
         private PaymentEventRepository paymentEventRepository;
         @Mock
         private IdempotencyKeyRepository idempotencyKeyRepository;
+        @Mock
+        private CaptureRepository captureRepository;
+        @Mock
+        private JournalEntryRepository journalEntryRepository;
+        @Mock
+        private JournalLineRepository journalLineRepository;
+        @Mock
+        private LedgerAccountRepository ledgerAccountRepository;
 
         private ObjectMapper objectMapper = new ObjectMapper();
         private PaymentService paymentService;
@@ -47,7 +59,9 @@ class PaymentServiceTest {
         void setUp() {
                 paymentService = new PaymentService(paymentRepository,
                                 paymentEventRepository,
-                                idempotencyKeyRepository, objectMapper);
+                                idempotencyKeyRepository, captureRepository,
+                                journalEntryRepository, journalLineRepository,
+                                ledgerAccountRepository, objectMapper);
         }
 
         @Test
