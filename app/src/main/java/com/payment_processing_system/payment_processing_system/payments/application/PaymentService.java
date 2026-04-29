@@ -254,8 +254,8 @@ public class PaymentService {
         debitLine.setJournalEntryId(journalEntry.getId());
         debitLine.setLedgerAccountId(cashClearing.getId());
         debitLine.setDirection(JournalLineType.DEBIT);
-        debitLine.setAmount(money);
-        debitLine.setCurrency(money.currency());
+        debitLine.setAmount(money.amountMinor());
+        debitLine.setCurrency(money.currency().value());
         journalLineRepository.save(debitLine);
 
         // CREDIT Deferred Revenue
@@ -263,8 +263,8 @@ public class PaymentService {
         creditLine.setJournalEntryId(journalEntry.getId());
         creditLine.setLedgerAccountId(deferredRevenue.getId());
         creditLine.setDirection(JournalLineType.CREDIT);
-        creditLine.setAmount(money);
-        creditLine.setCurrency(money.currency());
+        creditLine.setAmount(money.amountMinor());
+        creditLine.setCurrency(money.currency().value());
         journalLineRepository.save(creditLine);
 
         // 8. Complete Idempotency Key
