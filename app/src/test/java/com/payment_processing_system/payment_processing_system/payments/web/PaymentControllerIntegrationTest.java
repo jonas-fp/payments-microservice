@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,6 +24,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.AuthorizePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundResponse;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -43,6 +46,9 @@ class PaymentControllerIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void authorize_validRequest_returnsCreated() throws Exception {
@@ -146,5 +152,54 @@ class PaymentControllerIntegrationTest {
                 .andExpect(jsonPath("$.paymentId").value(paymentId.toString()))
                 .andExpect(jsonPath("$.status").value("CAPTURED"))
                 .andExpect(jsonPath("$.amountMinor").value(10000));
+    }
+
+    @Test
+    void refund_validRequest_returnsCreated() throws Exception {
+        // 1. Authorize a payment
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+
+        String authResponseJson = mockMvc.perform(post("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(authRequest)))
+            .andExpect(status().isCreated()).andReturn().getResponse()
+            .getContentAsString();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        UUID paymentId = objectMapper
+            .readValue(authResponseJson, PaymentResponse.class).id();
+
+        // 2. Capture the payment
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+
+        mockMvc.perform(post("/v1/payments/" + paymentId + "/capture")
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(capRequest)))
+            .andExpect(status().isCreated());
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // 3. Refund the payment
+        String refIdempotencyKey = UUID.randomUUID().toString();
+        RefundRequest refRequest = new RefundRequest(
+            "customer-1", new BigDecimal("5000"), "USD");
+
+        mockMvc.perform(post("/v1/payments/" + paymentId + "/refunds")
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(refRequest)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.paymentId").value(paymentId.toString()))
+            .andExpect(jsonPath("$.status").value("PARTIALLY_REFUNDED"))
+            .andExpect(jsonPath("$.amountMinor").value(5000));
     }
 }
