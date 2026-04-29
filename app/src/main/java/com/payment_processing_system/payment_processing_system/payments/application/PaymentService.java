@@ -26,10 +26,13 @@ import com.payment_processing_system.payment_processing_system.entity.JournalLin
 import com.payment_processing_system.payment_processing_system.entity.LedgerAccountEntity;
 import com.payment_processing_system.payment_processing_system.entity.PaymentEntity;
 import com.payment_processing_system.payment_processing_system.entity.PaymentEventEntity;
+import com.payment_processing_system.payment_processing_system.entity.RefundEntity;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.AuthorizePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CaptureResponse;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundResponse;
 import com.payment_processing_system.payment_processing_system.repository.CaptureRepository;
 import com.payment_processing_system.payment_processing_system.repository.IdempotencyKeyRepository;
 import com.payment_processing_system.payment_processing_system.repository.JournalEntryRepository;
@@ -37,6 +40,7 @@ import com.payment_processing_system.payment_processing_system.repository.Journa
 import com.payment_processing_system.payment_processing_system.repository.LedgerAccountRepository;
 import com.payment_processing_system.payment_processing_system.repository.PaymentEventRepository;
 import com.payment_processing_system.payment_processing_system.repository.PaymentRepository;
+import com.payment_processing_system.payment_processing_system.repository.RefundRepository;
 
 @Service
 public class PaymentService {
@@ -45,6 +49,7 @@ public class PaymentService {
     private final PaymentEventRepository paymentEventRepository;
     private final IdempotencyKeyRepository idempotencyKeyRepository;
     private final CaptureRepository captureRepository;
+    private final RefundRepository refundRepository;
     private final JournalEntryRepository journalEntryRepository;
     private final JournalLineRepository journalLineRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
@@ -54,6 +59,7 @@ public class PaymentService {
             PaymentEventRepository paymentEventRepository,
             IdempotencyKeyRepository idempotencyKeyRepository,
             CaptureRepository captureRepository,
+            RefundRepository refundRepository,
             JournalEntryRepository journalEntryRepository,
             JournalLineRepository journalLineRepository,
             LedgerAccountRepository ledgerAccountRepository,
@@ -62,6 +68,7 @@ public class PaymentService {
         this.paymentEventRepository = paymentEventRepository;
         this.idempotencyKeyRepository = idempotencyKeyRepository;
         this.captureRepository = captureRepository;
+        this.refundRepository = refundRepository;
         this.journalEntryRepository = journalEntryRepository;
         this.journalLineRepository = journalLineRepository;
         this.ledgerAccountRepository = ledgerAccountRepository;
@@ -277,6 +284,146 @@ public class PaymentService {
 
         keyEntity.setResponseStatus("COMPLETED");
         keyEntity.setResourceId(capture.getId());
+        keyEntity.setEventId(event.getId());
+        keyEntity.setResponseCode(201);
+        keyEntity.setResponseBody(objectMapper.valueToTree(response));
+        idempotencyKeyRepository.save(keyEntity);
+
+        return response;
+    }
+
+    @Transactional
+    public RefundResponse refund(UUID paymentId, String idempotencyKey,
+        RefundRequest request) {
+        String actionType = "REFUND";
+        String requestHash = calculateHash(request);
+
+        // 1. Check for existing idempotency key
+        Optional<IdempotencyKeyEntity> existingKey = idempotencyKeyRepository
+            .findByCustomerIdAndIdempotencyKeyAndActionType(
+                request.customerId(), idempotencyKey, actionType);
+
+        if (existingKey.isPresent()) {
+            IdempotencyKeyEntity key = existingKey.get();
+
+            if (!key.getRequestHash().equals(requestHash)) {
+                throw new IllegalStateException(
+                    "Idempotency key reuse with different request body");
+            }
+
+            if ("COMPLETED".equals(key.getResponseStatus())) {
+                try {
+                    return objectMapper.treeToValue(key.getResponseBody(),
+                        RefundResponse.class);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(
+                        "Failed to deserialize cached response", e);
+                }
+            } else if ("STARTED".equals(key.getResponseStatus())) {
+                throw new IllegalStateException("Request already in progress");
+            }
+        }
+
+        // 2. Register idempotency key as STARTED
+        IdempotencyKeyEntity keyEntity = new IdempotencyKeyEntity();
+        keyEntity.setCustomerId(request.customerId());
+        keyEntity.setIdempotencyKey(idempotencyKey);
+        keyEntity.setActionType(actionType);
+        keyEntity.setRequestHash(requestHash);
+        keyEntity.setResponseStatus("STARTED");
+        keyEntity = idempotencyKeyRepository.save(keyEntity);
+
+        // 3. Validation
+        PaymentEntity payment = paymentRepository.findById(paymentId)
+            .orElseThrow(
+                () -> new IllegalArgumentException("Payment not found"));
+
+        if (!payment.getStatus().canBeRefunded()) {
+            throw new IllegalStateException(
+                "Payment is not in a refundable state");
+        }
+
+        BigDecimal amountToRefund = request.amountMinor().movePointLeft(2);
+        BigDecimal availableToRefund =
+            payment.getCapturedAmount().subtract(payment.getRefundedAmount());
+        if (amountToRefund.compareTo(availableToRefund) > 0) {
+            throw new IllegalArgumentException(
+                "Refund amount exceeds available captured amount");
+        }
+
+        // 4. Process the refund (Mocking processor call)
+        String processorRefundReference =
+            "ref_" + UUID.randomUUID().toString().substring(0, 8);
+
+        // 5. Create Payment Event
+        PaymentEventEntity event = new PaymentEventEntity();
+        event.setPaymentId(payment.getId());
+        event.setEventType(PaymentEventType.REFUND_SUCCESS);
+        event.setProcessorEventReference(processorRefundReference + "_evt");
+        event.setIdempotencyKeyId(keyEntity.getId());
+        event = paymentEventRepository.save(event);
+
+        // 6. Record Refund
+        RefundEntity refund = new RefundEntity();
+        refund.setPaymentId(payment.getId());
+        refund.setPaymentEventId(event.getId());
+        refund.setAmount(amountToRefund);
+        refund.setCurrency(payment.getCurrency());
+        refund.setProcessorRefundReference(processorRefundReference);
+        refund = refundRepository.save(refund);
+
+        // 7. Ledger Entry (Double-Entry)
+        JournalEntryEntity journalEntry = new JournalEntryEntity();
+        journalEntry.setPaymentId(payment.getId());
+        journalEntry.setRefundId(refund.getId());
+        journalEntry.setTransactionType(TransactionType.REFUND);
+        journalEntry = journalEntryRepository.save(journalEntry);
+
+        LedgerAccountEntity cashClearing =
+            ledgerAccountRepository.findByAccountCode("10001")
+                .orElseThrow(() -> new IllegalStateException(
+                    "Cash Clearing account not found"));
+        LedgerAccountEntity deferredRevenue =
+            ledgerAccountRepository.findByAccountCode("20002")
+                .orElseThrow(() -> new IllegalStateException(
+                    "Deferred Revenue account not found"));
+
+        Money money =
+            new Money(amountToRefund, new CurrencyCode(payment.getCurrency()));
+
+        // DEBIT Deferred Revenue (Liability decreases)
+        JournalLineEntity debitLine = new JournalLineEntity();
+        debitLine.setJournalEntryId(journalEntry.getId());
+        debitLine.setLedgerAccountId(deferredRevenue.getId());
+        debitLine.setDirection(JournalLineType.DEBIT);
+        debitLine.setAmount(money.amountMinor());
+        debitLine.setCurrency(money.currency().value());
+        journalLineRepository.save(debitLine);
+
+        // CREDIT Cash Clearing (Asset decreases)
+        JournalLineEntity creditLine = new JournalLineEntity();
+        creditLine.setJournalEntryId(journalEntry.getId());
+        creditLine.setLedgerAccountId(cashClearing.getId());
+        creditLine.setDirection(JournalLineType.CREDIT);
+        creditLine.setAmount(money.amountMinor());
+        creditLine.setCurrency(money.currency().value());
+        journalLineRepository.save(creditLine);
+
+        // 8. Complete Idempotency Key
+        RefundResponse response = new RefundResponse(
+            refund.getId(),
+            payment.getId(),
+            refund.getAmount().movePointRight(2),
+            refund.getCurrency(),
+            payment.getCapturedAmount()
+                .subtract(payment.getRefundedAmount().add(amountToRefund))
+                .compareTo(BigDecimal.ZERO) == 0
+                    ? PaymentStatus.FULLY_REFUNDED
+                    : PaymentStatus.PARTIALLY_REFUNDED,
+            refund.getProcessorRefundReference());
+
+        keyEntity.setResponseStatus("COMPLETED");
+        keyEntity.setResourceId(refund.getId());
         keyEntity.setEventId(event.getId());
         keyEntity.setResponseCode(201);
         keyEntity.setResponseBody(objectMapper.valueToTree(response));
