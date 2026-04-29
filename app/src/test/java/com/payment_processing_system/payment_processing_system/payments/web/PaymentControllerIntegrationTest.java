@@ -23,9 +23,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.AuthorizePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
-import com.payment_processing_system.payment_processing_system.repository.PaymentRepository;
-
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @SpringBootTest
 @AutoConfigureMockMvc
