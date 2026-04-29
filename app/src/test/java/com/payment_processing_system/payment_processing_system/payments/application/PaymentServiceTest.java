@@ -33,6 +33,7 @@ import com.payment_processing_system.payment_processing_system.repository.Journa
 import com.payment_processing_system.payment_processing_system.repository.LedgerAccountRepository;
 import com.payment_processing_system.payment_processing_system.repository.PaymentEventRepository;
 import com.payment_processing_system.payment_processing_system.repository.PaymentRepository;
+import com.payment_processing_system.payment_processing_system.repository.RefundRepository;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -45,6 +46,8 @@ class PaymentServiceTest {
     private IdempotencyKeyRepository idempotencyKeyRepository;
     @Mock
     private CaptureRepository captureRepository;
+    @Mock
+    private RefundRepository refundRepository;
     @Mock
     private JournalEntryRepository journalEntryRepository;
     @Mock
@@ -59,7 +62,7 @@ class PaymentServiceTest {
     void setUp() {
         paymentService = new PaymentService(paymentRepository,
                 paymentEventRepository, idempotencyKeyRepository,
-                captureRepository, journalEntryRepository,
+                captureRepository, refundRepository, journalEntryRepository,
                 journalLineRepository, ledgerAccountRepository, objectMapper);
     }
 
