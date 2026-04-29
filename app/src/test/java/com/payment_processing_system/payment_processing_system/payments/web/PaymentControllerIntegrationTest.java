@@ -25,7 +25,6 @@ import com.payment_processing_system.payment_processing_system.payments.web.dto.
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundRequest;
-import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundResponse;
 
 @SpringBootTest
 @AutoConfigureMockMvc
