@@ -14,6 +14,8 @@ import com.payment_processing_system.payment_processing_system.payments.web.dto.
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CaptureResponse;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundResponse;
 
 import java.util.UUID;
 
@@ -31,19 +33,19 @@ public class PaymentController {
 
     @PostMapping("/authorize")
     public ResponseEntity<PaymentResponse> authorize(
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @Valid @RequestBody AuthorizePaymentRequest request) {
+        @RequestHeader("Idempotency-Key") String idempotencyKey,
+        @Valid @RequestBody AuthorizePaymentRequest request) {
 
         try {
             PaymentResponse response = paymentService.authorize(idempotencyKey,
-                    request);
+                request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalStateException e) {
             if (e.getMessage().contains("already in progress")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
             } else if (e.getMessage().contains("different request body")) {
                 return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                        .build();
+                    .build();
             }
             throw e;
         }
@@ -51,20 +53,44 @@ public class PaymentController {
 
     @PostMapping("/{paymentId}/capture")
     public ResponseEntity<CaptureResponse> capture(@PathVariable UUID paymentId,
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @Valid @RequestBody CapturePaymentRequest request) {
+        @RequestHeader("Idempotency-Key") String idempotencyKey,
+        @Valid @RequestBody CapturePaymentRequest request) {
 
         try {
             CaptureResponse response = paymentService.capture(paymentId,
-                    idempotencyKey, request);
+                idempotencyKey, request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalStateException e) {
             if (e.getMessage().contains("already in progress")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
             } else if (e.getMessage().contains("different request body")) {
                 return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                        .build();
+                    .build();
             } else if (e.getMessage().contains("AUTHORIZED state")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            }
+            throw e;
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @PostMapping("/{paymentId}/refunds")
+    public ResponseEntity<RefundResponse> refund(@PathVariable UUID paymentId,
+        @RequestHeader("Idempotency-Key") String idempotencyKey,
+        @Valid @RequestBody RefundRequest request) {
+
+        try {
+            RefundResponse response =
+                paymentService.refund(paymentId, idempotencyKey, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (IllegalStateException e) {
+            if (e.getMessage().contains("already in progress")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            } else if (e.getMessage().contains("different request body")) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .build();
+            } else if (e.getMessage().contains("refundable state")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
             }
             throw e;

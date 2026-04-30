@@ -33,6 +33,7 @@ import com.payment_processing_system.payment_processing_system.repository.Journa
 import com.payment_processing_system.payment_processing_system.repository.LedgerAccountRepository;
 import com.payment_processing_system.payment_processing_system.repository.PaymentEventRepository;
 import com.payment_processing_system.payment_processing_system.repository.PaymentRepository;
+import com.payment_processing_system.payment_processing_system.repository.RefundRepository;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -46,6 +47,8 @@ class PaymentServiceTest {
     @Mock
     private CaptureRepository captureRepository;
     @Mock
+    private RefundRepository refundRepository;
+    @Mock
     private JournalEntryRepository journalEntryRepository;
     @Mock
     private JournalLineRepository journalLineRepository;
@@ -58,9 +61,9 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         paymentService = new PaymentService(paymentRepository,
-                paymentEventRepository, idempotencyKeyRepository,
-                captureRepository, journalEntryRepository,
-                journalLineRepository, ledgerAccountRepository, objectMapper);
+            paymentEventRepository, idempotencyKeyRepository,
+            captureRepository, refundRepository, journalEntryRepository,
+            journalLineRepository, ledgerAccountRepository, objectMapper);
     }
 
     @Test
@@ -68,37 +71,37 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-                "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
-                "USD");
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "USD");
 
         when(idempotencyKeyRepository
-                .findByCustomerIdAndIdempotencyKeyAndActionType(any(), any(),
-                        any())).thenReturn(Optional.empty());
+            .findByCustomerIdAndIdempotencyKeyAndActionType(any(), any(),
+                any())).thenReturn(Optional.empty());
 
         when(idempotencyKeyRepository.save(any(IdempotencyKeyEntity.class)))
-                .thenAnswer(invocation -> {
-                    IdempotencyKeyEntity entity = invocation.getArgument(0);
-                    entity.setId(UUID.randomUUID());
-                    return entity;
-                });
+            .thenAnswer(invocation -> {
+                IdempotencyKeyEntity entity = invocation.getArgument(0);
+                entity.setId(UUID.randomUUID());
+                return entity;
+            });
 
         when(paymentRepository.save(any(PaymentEntity.class)))
-                .thenAnswer(invocation -> {
-                    PaymentEntity entity = invocation.getArgument(0);
-                    entity.setId(UUID.randomUUID());
-                    return entity;
-                });
+            .thenAnswer(invocation -> {
+                PaymentEntity entity = invocation.getArgument(0);
+                entity.setId(UUID.randomUUID());
+                return entity;
+            });
 
         when(paymentEventRepository.save(any(PaymentEventEntity.class)))
-                .thenAnswer(invocation -> {
-                    PaymentEventEntity entity = invocation.getArgument(0);
-                    entity.setId(UUID.randomUUID());
-                    return entity;
-                });
+            .thenAnswer(invocation -> {
+                PaymentEventEntity entity = invocation.getArgument(0);
+                entity.setId(UUID.randomUUID());
+                return entity;
+            });
 
         // When
         PaymentResponse response = paymentService.authorize(idempotencyKey,
-                request);
+            request);
 
         // Then
         assertThat(response.customerId()).isEqualTo("customer-1");
@@ -106,24 +109,24 @@ class PaymentServiceTest {
         assertThat(response.status()).isEqualTo(PaymentStatus.AUTHORIZED);
 
         verify(idempotencyKeyRepository, times(2))
-                .save(any(IdempotencyKeyEntity.class));
+            .save(any(IdempotencyKeyEntity.class));
         verify(paymentRepository).save(any(PaymentEntity.class));
         verify(paymentEventRepository).save(any(PaymentEventEntity.class));
     }
 
     @Test
     void authorize_completedRequest_returnsCachedResponse()
-            throws JsonProcessingException {
+        throws JsonProcessingException {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-                "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
-                "USD");
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "USD");
         String requestHash = calculateHash(request);
 
         PaymentResponse cachedResponse = new PaymentResponse(UUID.randomUUID(),
-                "customer-1", request.invoiceId(), request.amountMinor(),
-                request.currency(), PaymentStatus.AUTHORIZED, "proc_123");
+            "customer-1", request.invoiceId(), request.amountMinor(),
+            request.currency(), PaymentStatus.AUTHORIZED, "proc_123");
 
         IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
         existingKey.setCustomerId("customer-1");
@@ -134,19 +137,19 @@ class PaymentServiceTest {
         existingKey.setResponseBody(objectMapper.valueToTree(cachedResponse));
 
         when(idempotencyKeyRepository
-                .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
-                        idempotencyKey, "AUTHORIZE"))
-                                .thenReturn(Optional.of(existingKey));
+            .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
+                idempotencyKey, "AUTHORIZE"))
+                    .thenReturn(Optional.of(existingKey));
 
         // When
         PaymentResponse response = paymentService.authorize(idempotencyKey,
-                request);
+            request);
 
         // Then
         assertThat(response).usingRecursiveComparison()
-                .withEqualsForType((b1, b2) -> b1.compareTo(b2) == 0,
-                        BigDecimal.class)
-                .isEqualTo(cachedResponse);
+            .withEqualsForType((b1, b2) -> b1.compareTo(b2) == 0,
+                BigDecimal.class)
+            .isEqualTo(cachedResponse);
         verify(paymentRepository, never()).save(any());
         verify(paymentEventRepository, never()).save(any());
     }
@@ -156,8 +159,8 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-                "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
-                "USD");
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "USD");
         String requestHash = calculateHash(request);
 
         IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
@@ -168,15 +171,15 @@ class PaymentServiceTest {
         existingKey.setResponseStatus("STARTED");
 
         when(idempotencyKeyRepository
-                .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
-                        idempotencyKey, "AUTHORIZE"))
-                                .thenReturn(Optional.of(existingKey));
+            .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
+                idempotencyKey, "AUTHORIZE"))
+                    .thenReturn(Optional.of(existingKey));
 
         // When / Then
         assertThatThrownBy(
-                () -> paymentService.authorize(idempotencyKey, request))
-                        .isInstanceOf(IllegalStateException.class)
-                        .hasMessageContaining("already in progress");
+            () -> paymentService.authorize(idempotencyKey, request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("already in progress");
     }
 
     @Test
@@ -184,8 +187,8 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-                "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
-                "USD");
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "USD");
 
         IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
         existingKey.setCustomerId("customer-1");
@@ -194,29 +197,29 @@ class PaymentServiceTest {
         existingKey.setRequestHash("different-hash");
 
         when(idempotencyKeyRepository
-                .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
-                        idempotencyKey, "AUTHORIZE"))
-                                .thenReturn(Optional.of(existingKey));
+            .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
+                idempotencyKey, "AUTHORIZE"))
+                    .thenReturn(Optional.of(existingKey));
 
         // When / Then
         assertThatThrownBy(
-                () -> paymentService.authorize(idempotencyKey, request))
-                        .isInstanceOf(IllegalStateException.class)
-                        .hasMessageContaining(
-                                "Idempotency key reuse with different request"
-                                        + " body");
+            () -> paymentService.authorize(idempotencyKey, request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(
+                    "Idempotency key reuse with different request"
+                        + " body");
     }
 
     private String calculateHash(AuthorizePaymentRequest request) {
         try {
             java.security.MessageDigest digest = java.security.MessageDigest
-                    .getInstance("SHA-256");
+                .getInstance("SHA-256");
             String json = objectMapper.writeValueAsString(request);
             byte[] hashBytes = digest.digest(
-                    json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             return java.util.HexFormat.of().formatHex(hashBytes);
         } catch (java.security.NoSuchAlgorithmException
-                | JsonProcessingException e) {
+            | JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
