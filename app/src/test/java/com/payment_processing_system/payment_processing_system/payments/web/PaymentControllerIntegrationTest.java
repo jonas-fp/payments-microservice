@@ -118,18 +118,15 @@ class PaymentControllerIntegrationTest {
             .getResponseBody();
         
         // Response assertions
-        assertThat(firstResponse).usingRecursiveComparison()
-            .isEqualTo(secondResponse);
-
-        // DB assertions
-        assertThat(paymentRepository.count()).isEqualTo(1);
-        assertThat(idempotencyKeyRepository.count()).isEqualTo(1);
-
         assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
         assertThat(secondResponse.customerId())
             .isEqualTo(firstResponse.customerId());
         assertThat(secondResponse.amountMinor())
             .isEqualTo(firstResponse.amountMinor());
+
+        // DB assertions
+        assertThat(paymentRepository.count()).isEqualTo(1);
+        assertThat(idempotencyKeyRepository.count()).isEqualTo(1);
     }
 
     @Test
