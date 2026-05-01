@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import static org.assertj.core.api.Assertions.assertThat;
 import jakarta.persistence.EntityManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,8 @@ import com.payment_processing_system.payment_processing_system.payments.web.dto.
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundRequest;
+import com.payment_processing_system.payment_processing_system.repository.IdempotencyKeyRepository;
+import com.payment_processing_system.payment_processing_system.repository.PaymentRepository;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -43,6 +46,12 @@ class PaymentControllerIntegrationTest {
 
     @Autowired
     private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
+    private IdempotencyKeyRepository idempotencyKeyRepository;
 
     @BeforeEach
     void cleanDatabase() {
@@ -85,25 +94,42 @@ class PaymentControllerIntegrationTest {
             "USD");
 
         // First request
-        webTestClient.post()
-            .uri("/v1/payments/authorize")
-            .header("Idempotency-Key", idempotencyKey)
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request)
-            .exchange()
-            .expectStatus().isCreated();
-
-        // Second request (idempotent)
-        webTestClient.post()
+        PaymentResponse firstResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
             .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(request)
             .exchange()
             .expectStatus().isCreated()
-            .expectBody()
-            .jsonPath("$.customerId").isEqualTo("customer-1")
-            .jsonPath("$.amountMinor").isEqualTo(10000);
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        // Second request (idempotent)
+        PaymentResponse secondResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", idempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+        
+        // Response assertions
+        assertThat(firstResponse).usingRecursiveComparison()
+            .isEqualTo(secondResponse);
+
+        // DB assertions
+        assertThat(paymentRepository.count()).isEqualTo(1);
+        assertThat(idempotencyKeyRepository.count()).isEqualTo(1);
+
+        assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
+        assertThat(secondResponse.customerId())
+            .isEqualTo(firstResponse.customerId());
+        assertThat(secondResponse.amountMinor())
+            .isEqualTo(firstResponse.amountMinor());
     }
 
     @Test
