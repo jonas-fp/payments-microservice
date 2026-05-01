@@ -20,10 +20,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.payment_processing_system.payment_processing_system.payments.web.dto.AuthorizePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.CaptureResponse;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundResponse;
+import com.payment_processing_system.payment_processing_system.repository.CaptureRepository;
 import com.payment_processing_system.payment_processing_system.repository.IdempotencyKeyRepository;
 import com.payment_processing_system.payment_processing_system.repository.PaymentRepository;
+import com.payment_processing_system.payment_processing_system.repository.RefundRepository;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -52,6 +56,12 @@ class PaymentControllerIntegrationTest {
 
     @Autowired
     private IdempotencyKeyRepository idempotencyKeyRepository;
+
+    @Autowired
+    private CaptureRepository captureRepository;
+
+    @Autowired
+    private RefundRepository refundRepository;
 
     @BeforeEach
     void cleanDatabase() {
@@ -116,7 +126,7 @@ class PaymentControllerIntegrationTest {
             .expectBody(PaymentResponse.class)
             .returnResult()
             .getResponseBody();
-        
+
         // Response assertions
         assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
         assertThat(secondResponse.customerId())
@@ -198,6 +208,71 @@ class PaymentControllerIntegrationTest {
     }
 
     @Test
+    void capture_idempotentRequest_returnsCreatedAndSameResponse() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        UUID paymentId = authResponse.id();
+
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+
+        CaptureResponse firstResponse = webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(CaptureResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        CaptureResponse secondResponse = webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(CaptureResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
+        assertThat(secondResponse.paymentId())
+            .isEqualTo(firstResponse.paymentId());
+        assertThat(secondResponse.amountMinor())
+            .isEqualTo(firstResponse.amountMinor());
+        assertThat(secondResponse.currency())
+            .isEqualTo(firstResponse.currency());
+        assertThat(secondResponse.status()).isEqualTo(firstResponse.status());
+        assertThat(secondResponse.processorReference())
+            .isEqualTo(firstResponse.processorReference());
+
+        assertThat(paymentRepository.count()).isEqualTo(1);
+        assertThat(captureRepository.count()).isEqualTo(1);
+        assertThat(idempotencyKeyRepository
+            .findByCustomerIdAndIdempotencyKeyAndActionType(
+                "customer-1", capIdempotencyKey, "CAPTURE"))
+                    .isPresent();
+    }
+
+    @Test
     void refund_validRequest_returnsCreated() {
         // 1. Authorize a payment
         String authIdempotencyKey = UUID.randomUUID().toString();
@@ -246,5 +321,82 @@ class PaymentControllerIntegrationTest {
             .jsonPath("$.paymentId").isEqualTo(paymentId.toString())
             .jsonPath("$.status").isEqualTo("PARTIALLY_REFUNDED")
             .jsonPath("$.amountMinor").isEqualTo(5000);
+    }
+
+    @Test
+    void refund_idempotentRequest_returnsCreatedAndSameResponse() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        UUID paymentId = authResponse.id();
+
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated();
+
+        String refIdempotencyKey = UUID.randomUUID().toString();
+        RefundRequest refRequest = new RefundRequest(
+            "customer-1", new BigDecimal("5000"), "USD");
+
+        RefundResponse firstResponse = webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", paymentId)
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(RefundResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        RefundResponse secondResponse = webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", paymentId)
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(RefundResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
+        assertThat(secondResponse.paymentId())
+            .isEqualTo(firstResponse.paymentId());
+        assertThat(secondResponse.amountMinor())
+            .isEqualTo(firstResponse.amountMinor());
+        assertThat(secondResponse.currency())
+            .isEqualTo(firstResponse.currency());
+        assertThat(secondResponse.status()).isEqualTo(firstResponse.status());
+        assertThat(secondResponse.processorReference())
+            .isEqualTo(firstResponse.processorReference());
+
+        assertThat(paymentRepository.count()).isEqualTo(1);
+        assertThat(captureRepository.count()).isEqualTo(1);
+        assertThat(refundRepository.count()).isEqualTo(1);
+        assertThat(idempotencyKeyRepository
+            .findByCustomerIdAndIdempotencyKeyAndActionType(
+                "customer-1", refIdempotencyKey, "REFUND"))
+                    .isPresent();
     }
 }
