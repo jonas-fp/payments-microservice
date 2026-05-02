@@ -527,4 +527,45 @@ class PaymentControllerIntegrationTest {
             .expectStatus().isEqualTo(409);
     }
 
+    @Test
+    void refund_overRefundedPayment_returnsBadRequest() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", authResponse.id())
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated();
+
+        String refIdempotencyKey = UUID.randomUUID().toString();
+        RefundRequest refRequest = new RefundRequest(
+            "customer-1", new BigDecimal("15000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", authResponse.id())
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isEqualTo(400);
+    }
 }
