@@ -1,35 +1,37 @@
 package com.payment_processing_system.payment_processing_system.payments.web;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import static org.assertj.core.api.Assertions.assertThat;
+import jakarta.persistence.EntityManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.AuthorizePaymentRequest;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.CaptureResponse;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.PaymentResponse;
 import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.RefundResponse;
+import com.payment_processing_system.payment_processing_system.repository.CaptureRepository;
+import com.payment_processing_system.payment_processing_system.repository.IdempotencyKeyRepository;
+import com.payment_processing_system.payment_processing_system.repository.PaymentRepository;
+import com.payment_processing_system.payment_processing_system.repository.RefundRepository;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureWebTestClient
 @Testcontainers
-@Transactional
 class PaymentControllerIntegrationTest {
 
     @Container
@@ -41,60 +43,104 @@ class PaymentControllerIntegrationTest {
             .withInitScript("init-db.sql");
 
     @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    private WebTestClient webTestClient;
 
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
+    private IdempotencyKeyRepository idempotencyKeyRepository;
+
+    @Autowired
+    private CaptureRepository captureRepository;
+
+    @Autowired
+    private RefundRepository refundRepository;
+
+    @BeforeEach
+    void cleanDatabase() {
+        transactionTemplate.execute(status -> {
+            entityManager.createNativeQuery(
+                "TRUNCATE TABLE journal_lines, journal_entries, captures, " +
+                    "refunds, payment_events, payments, idempotency_keys " +
+                    "RESTART IDENTITY CASCADE")
+                .executeUpdate();
+            return null;
+        });
+    }
+
     @Test
-    void authorize_validRequest_returnsCreated() throws Exception {
+    void authorize_validRequest_returnsCreated() {
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
             "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
             "USD");
 
-        mockMvc.perform(post("/v1/payments/authorize")
+        webTestClient.post()
+            .uri("/v1/payments/authorize")
             .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.customerId").value("customer-1"))
-            .andExpect(jsonPath("$.amountMinor").value(10000))
-            .andExpect(jsonPath("$.currency").value("USD"))
-            .andExpect(jsonPath("$.status").value("AUTHORIZED"));
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody()
+            .jsonPath("$.customerId").isEqualTo("customer-1")
+            .jsonPath("$.amountMinor").isEqualTo(10000)
+            .jsonPath("$.currency").isEqualTo("USD")
+            .jsonPath("$.status").isEqualTo("AUTHORIZED");
     }
 
     @Test
-    void authorize_idempotentRequest_returnsCreatedAndSameResponse()
-        throws Exception {
+    void authorize_idempotentRequest_returnsCreatedAndSameResponse() {
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
             "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
             "USD");
 
         // First request
-        mockMvc.perform(post("/v1/payments/authorize")
+        PaymentResponse firstResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
             .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated());
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
 
         // Second request (idempotent)
-        mockMvc.perform(post("/v1/payments/authorize")
+        PaymentResponse secondResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
             .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.customerId").value("customer-1"))
-            .andExpect(jsonPath("$.amountMinor").value(10000));
+            .bodyValue(request)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        // Response assertions
+        assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
+        assertThat(secondResponse.customerId())
+            .isEqualTo(firstResponse.customerId());
+        assertThat(secondResponse.amountMinor())
+            .isEqualTo(firstResponse.amountMinor());
+
+        // DB assertions
+        assertThat(paymentRepository.count()).isEqualTo(1);
+        assertThat(idempotencyKeyRepository.count()).isEqualTo(1);
     }
 
     @Test
-    void authorize_mismatchedRequestBody_returnsUnprocessableEntity()
-        throws Exception {
+    void authorize_mismatchedRequestBody_returnsUnprocessableEntity() {
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request1 = new AuthorizePaymentRequest(
             "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
@@ -104,38 +150,43 @@ class PaymentControllerIntegrationTest {
             "USD");
 
         // First request
-        mockMvc.perform(post("/v1/payments/authorize")
+        webTestClient.post()
+            .uri("/v1/payments/authorize")
             .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request1)))
-            .andExpect(status().isCreated());
+            .bodyValue(request1)
+            .exchange()
+            .expectStatus().isCreated();
 
         // Second request with different body
-        mockMvc.perform(post("/v1/payments/authorize")
+        webTestClient.post()
+            .uri("/v1/payments/authorize")
             .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request2)))
-            .andExpect(status().isUnprocessableEntity());
+            .bodyValue(request2)
+            .exchange()
+            .expectStatus().isEqualTo(422); // Unprocessable Entity
     }
 
     @Test
-    void capture_validRequest_returnsCreated() throws Exception {
+    void capture_validRequest_returnsCreated() {
         // 1. Authorize a payment first
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
             "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
             "USD");
 
-        String authResponseJson = mockMvc
-            .perform(post("/v1/payments/authorize")
-                .header("Idempotency-Key", authIdempotencyKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(authRequest)))
-            .andExpect(status().isCreated()).andReturn().getResponse()
-            .getContentAsString();
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
 
-        PaymentResponse authResponse = objectMapper.readValue(authResponseJson,
-            PaymentResponse.class);
         UUID paymentId = authResponse.id();
 
         // 2. Capture the payment
@@ -143,62 +194,378 @@ class PaymentControllerIntegrationTest {
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
             "customer-1", new BigDecimal("10000"), "USD");
 
-        mockMvc.perform(post("/v1/payments/" + paymentId + "/capture")
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
             .header("Idempotency-Key", capIdempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(capRequest)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.paymentId").value(paymentId.toString()))
-            .andExpect(jsonPath("$.status").value("CAPTURED"))
-            .andExpect(jsonPath("$.amountMinor").value(10000));
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody()
+            .jsonPath("$.paymentId").isEqualTo(paymentId.toString())
+            .jsonPath("$.status").isEqualTo("CAPTURED")
+            .jsonPath("$.amountMinor").isEqualTo(10000);
     }
 
     @Test
-    void refund_validRequest_returnsCreated() throws Exception {
+    void capture_idempotentRequest_returnsCreatedAndSameResponse() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        UUID paymentId = authResponse.id();
+
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+
+        CaptureResponse firstResponse = webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(CaptureResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        CaptureResponse secondResponse = webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(CaptureResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
+        assertThat(secondResponse.paymentId())
+            .isEqualTo(firstResponse.paymentId());
+        assertThat(secondResponse.amountMinor())
+            .isEqualTo(firstResponse.amountMinor());
+        assertThat(secondResponse.currency())
+            .isEqualTo(firstResponse.currency());
+        assertThat(secondResponse.status()).isEqualTo(firstResponse.status());
+        assertThat(secondResponse.processorReference())
+            .isEqualTo(firstResponse.processorReference());
+
+        assertThat(paymentRepository.count()).isEqualTo(1);
+        assertThat(captureRepository.count()).isEqualTo(1);
+        assertThat(idempotencyKeyRepository
+            .findByCustomerIdAndIdempotencyKeyAndActionType(
+                "customer-1", capIdempotencyKey, "CAPTURE"))
+                    .isPresent();
+    }
+
+    @Test
+    void capture_mismatchedRequestBody_returnsUnprocessableEntity() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        UUID paymentId = authResponse.id();
+
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest request1 = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+        CapturePaymentRequest request2 = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("20000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request1)
+            .exchange()
+            .expectStatus().isCreated();
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request2)
+            .exchange()
+            .expectStatus().isEqualTo(422);
+    }
+
+    @Test
+    void refund_validRequest_returnsCreated() {
         // 1. Authorize a payment
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
             "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
 
-        String authResponseJson = mockMvc.perform(post("/v1/payments/authorize")
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
             .header("Idempotency-Key", authIdempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(authRequest)))
-            .andExpect(status().isCreated()).andReturn().getResponse()
-            .getContentAsString();
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
 
-        entityManager.flush();
-        entityManager.clear();
-
-        UUID paymentId = objectMapper
-            .readValue(authResponseJson, PaymentResponse.class).id();
+        UUID paymentId = authResponse.id();
 
         // 2. Capture the payment
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
             "customer-1", new BigDecimal("10000"), "USD");
 
-        mockMvc.perform(post("/v1/payments/" + paymentId + "/capture")
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
             .header("Idempotency-Key", capIdempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(capRequest)))
-            .andExpect(status().isCreated());
-
-        entityManager.flush();
-        entityManager.clear();
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated();
 
         // 3. Refund the payment
         String refIdempotencyKey = UUID.randomUUID().toString();
         RefundRequest refRequest = new RefundRequest(
             "customer-1", new BigDecimal("5000"), "USD");
 
-        mockMvc.perform(post("/v1/payments/" + paymentId + "/refunds")
+        webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", paymentId)
             .header("Idempotency-Key", refIdempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(refRequest)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.paymentId").value(paymentId.toString()))
-            .andExpect(jsonPath("$.status").value("PARTIALLY_REFUNDED"))
-            .andExpect(jsonPath("$.amountMinor").value(5000));
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody()
+            .jsonPath("$.paymentId").isEqualTo(paymentId.toString())
+            .jsonPath("$.status").isEqualTo("PARTIALLY_REFUNDED")
+            .jsonPath("$.amountMinor").isEqualTo(5000);
+    }
+
+    @Test
+    void refund_idempotentRequest_returnsCreatedAndSameResponse() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        UUID paymentId = authResponse.id();
+
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated();
+
+        String refIdempotencyKey = UUID.randomUUID().toString();
+        RefundRequest refRequest = new RefundRequest(
+            "customer-1", new BigDecimal("5000"), "USD");
+
+        RefundResponse firstResponse = webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", paymentId)
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(RefundResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        RefundResponse secondResponse = webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", paymentId)
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(RefundResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
+        assertThat(secondResponse.paymentId())
+            .isEqualTo(firstResponse.paymentId());
+        assertThat(secondResponse.amountMinor())
+            .isEqualTo(firstResponse.amountMinor());
+        assertThat(secondResponse.currency())
+            .isEqualTo(firstResponse.currency());
+        assertThat(secondResponse.status()).isEqualTo(firstResponse.status());
+        assertThat(secondResponse.processorReference())
+            .isEqualTo(firstResponse.processorReference());
+
+        assertThat(paymentRepository.count()).isEqualTo(1);
+        assertThat(captureRepository.count()).isEqualTo(1);
+        assertThat(refundRepository.count()).isEqualTo(1);
+        assertThat(idempotencyKeyRepository
+            .findByCustomerIdAndIdempotencyKeyAndActionType(
+                "customer-1", refIdempotencyKey, "REFUND"))
+                    .isPresent();
+    }
+
+    @Test
+    void refund_mismatchedRequestBody_returnsUnprocessableEntity() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        UUID paymentId = authResponse.id();
+
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated();
+
+        String refIdempotencyKey = UUID.randomUUID().toString();
+        RefundRequest request1 = new RefundRequest(
+            "customer-1", new BigDecimal("5000"), "USD");
+        RefundRequest request2 = new RefundRequest(
+            "customer-1", new BigDecimal("7000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", paymentId)
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request1)
+            .exchange()
+            .expectStatus().isCreated();
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", paymentId)
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request2)
+            .exchange()
+            .expectStatus().isEqualTo(422);
+    }
+
+    @Test
+    void refund_nonCapturedPayment_returnsConflict() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        String refIdempotencyKey = UUID.randomUUID().toString();
+        RefundRequest refRequest = new RefundRequest(
+            "customer-1", new BigDecimal("5000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", authResponse.id())
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void refund_overRefundedPayment_returnsBadRequest() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", authResponse.id())
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated();
+
+        String refIdempotencyKey = UUID.randomUUID().toString();
+        RefundRequest refRequest = new RefundRequest(
+            "customer-1", new BigDecimal("15000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", authResponse.id())
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isEqualTo(400);
     }
 }
