@@ -496,4 +496,35 @@ class PaymentControllerIntegrationTest {
             .exchange()
             .expectStatus().isEqualTo(422);
     }
+
+    @Test
+    void refund_nonCapturedPayment_returnsConflict() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        String refIdempotencyKey = UUID.randomUUID().toString();
+        RefundRequest refRequest = new RefundRequest(
+            "customer-1", new BigDecimal("5000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", authResponse.id())
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isEqualTo(409);
+    }
+
 }
