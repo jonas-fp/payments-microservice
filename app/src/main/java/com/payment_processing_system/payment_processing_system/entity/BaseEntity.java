@@ -17,8 +17,7 @@ public abstract class BaseEntity {
     @Column(nullable = false, updatable = false)
     private UUID id;
 
-    protected BaseEntity() {
-    }
+    protected BaseEntity() {}
 
     public UUID getId() {
         return id;
