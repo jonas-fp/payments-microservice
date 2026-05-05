@@ -117,4 +117,55 @@ class LedgerControllerIntegrationTest {
             .jsonPath("$.balance").isEqualTo(100.00)
             .jsonPath("$.currency").isEqualTo("USD");
     }
+
+    @Test
+    void getTrialBalance_afterCapture_returnsBalancedTrialBalance() {
+        // 1. Authorize and Capture a payment of 100.00
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        UUID paymentId = authResponse.id();
+
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigDecimal("10000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated();
+
+        // 2. Get trial balance
+        webTestClient.get()
+            .uri(uriBuilder -> uriBuilder
+                .path("/v1/payments/subledger/trial-balance")
+                .queryParam("asOf", OffsetDateTime.now().toString())
+                .build())
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$.entries[?(@.accountCode=='10001')].totalDebit")
+            .isEqualTo(100.00)
+            .jsonPath("$.entries[?(@.accountCode=='10001')].totalCredit")
+            .isEqualTo(0)
+            .jsonPath("$.entries[?(@.accountCode=='20002')].totalDebit")
+            .isEqualTo(0)
+            .jsonPath("$.entries[?(@.accountCode=='20002')].totalCredit")
+            .isEqualTo(100.00);
+    }
 }
