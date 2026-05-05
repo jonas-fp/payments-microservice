@@ -12,6 +12,8 @@ import com.payment_processing_system.payment_processing_system.domain.JournalLin
 import com.payment_processing_system.payment_processing_system.entity.JournalLineEntity;
 import com.payment_processing_system.payment_processing_system.entity.LedgerAccountEntity;
 import com.payment_processing_system.payment_processing_system.ledger.web.dto.AccountBalanceResponse;
+import com.payment_processing_system.payment_processing_system.ledger.web.dto.TrialBalanceEntry;
+import com.payment_processing_system.payment_processing_system.ledger.web.dto.TrialBalanceResponse;
 import com.payment_processing_system.payment_processing_system.repository.JournalLineRepository;
 import com.payment_processing_system.payment_processing_system.repository.LedgerAccountRepository;
 
@@ -62,5 +64,12 @@ public class LedgerService {
             balance,
             currency,
             asOf);
+    }
+
+    @Transactional(readOnly = true)
+    public TrialBalanceResponse getTrialBalance(OffsetDateTime asOf) {
+        List<TrialBalanceEntry> entries = journalLineRepository
+            .getTrialBalance(asOf);
+        return new TrialBalanceResponse(entries, asOf);
     }
 }
