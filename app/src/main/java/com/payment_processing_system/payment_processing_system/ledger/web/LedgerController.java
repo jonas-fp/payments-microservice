@@ -16,7 +16,7 @@ import com.payment_processing_system.payment_processing_system.ledger.applicatio
 import com.payment_processing_system.payment_processing_system.ledger.web.dto.AccountBalanceResponse;
 
 @RestController
-@RequestMapping("/v1/payments/subledger/accounts")
+@RequestMapping("/v1/payments/subledger")
 public class LedgerController {
 
     private final LedgerService ledgerService;
@@ -25,7 +25,7 @@ public class LedgerController {
         this.ledgerService = ledgerService;
     }
 
-    @GetMapping("/{accountId}/balance")
+    @GetMapping("/accounts/{accountId}/balance")
     public ResponseEntity<AccountBalanceResponse> getAccountBalance(
         @PathVariable UUID accountId,
         @RequestParam(required = false) @DateTimeFormat(
