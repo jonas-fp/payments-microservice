@@ -19,4 +19,18 @@ public interface JournalLineRepository
     List<JournalLineEntity> findByLedgerAccountIdAndCreatedAtBefore(
         @Param("accountId") UUID accountId,
         @Param("asOf") OffsetDateTime asOf);
+
+    @Query("""
+        SELECT new com.payment_processing_system.payment_processing_system.ledger.web.dto.TrialBalanceEntry(
+            la.accountCode,
+            la.accountName,
+            SUM(CASE WHEN jl.direction = 'DEBIT' THEN jl.amount ELSE 0 END),
+            SUM(CASE WHEN jl.direction = 'CREDIT' THEN jl.amount ELSE 0 END)
+        )
+        FROM LedgerAccountEntity la
+        LEFT JOIN JournalLineEntity jl ON la.id = jl.ledgerAccountId AND jl.createdAt <= :asOf
+        GROUP BY la.accountCode, la.accountName
+        """)
+    List<com.payment_processing_system.payment_processing_system.ledger.web.dto.TrialBalanceEntry> getTrialBalance(
+        @Param("asOf") OffsetDateTime asOf);
 }
