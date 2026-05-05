@@ -22,8 +22,7 @@ public class ReconciliationRun extends BaseEntity {
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
 
-    public ReconciliationRun() {
-    }
+    public ReconciliationRun() {}
 
     public LocalDate getBusinessDate() {
         return businessDate;

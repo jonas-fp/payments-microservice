@@ -28,8 +28,7 @@ public class ProcessorStatementRow extends BaseEntity {
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 
-    public ProcessorStatementRow() {
-    }
+    public ProcessorStatementRow() {}
 
     public ReconciliationRun getReconciliationRun() {
         return reconciliationRun;
