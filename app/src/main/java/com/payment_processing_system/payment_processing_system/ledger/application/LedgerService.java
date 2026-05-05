@@ -70,6 +70,23 @@ public class LedgerService {
     public TrialBalanceResponse getTrialBalance(OffsetDateTime asOf) {
         List<TrialBalanceEntry> entries = journalLineRepository
             .getTrialBalance(asOf);
-        return new TrialBalanceResponse(entries, asOf);
+
+        BigDecimal totalDebits = BigDecimal.ZERO;
+        BigDecimal totalCredits = BigDecimal.ZERO;
+
+        for (TrialBalanceEntry entry : entries) {
+            totalDebits = totalDebits.add(entry.totalDebit());
+            totalCredits = totalCredits.add(entry.totalCredit());
+        }
+
+        Boolean isBalanced = true;
+
+        if (totalDebits.subtract(totalCredits)
+            .compareTo(BigDecimal.ZERO) != 0) {
+            isBalanced = false;
+        }
+
+        return new TrialBalanceResponse(asOf, totalDebits, totalCredits,
+            isBalanced, entries);
     }
 }
