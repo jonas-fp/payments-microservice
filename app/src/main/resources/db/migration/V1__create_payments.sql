@@ -27,7 +27,7 @@ CREATE TABLE payments (
     CONSTRAINT chk_no_micro_cents_refunded
     CHECK (refunded_amount * 100 = TRUNC(refunded_amount * 100)),
     
-    CONSTRAINT chk_valid_currency_code CHECK (currency IN ('USD', 'CAD')),
+    CONSTRAINT chk_valid_currency_code CHECK (currency IN ('USD')),
 
     CONSTRAINT chk_payments_status CHECK (
         status IN (
