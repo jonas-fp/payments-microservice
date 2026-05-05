@@ -17,8 +17,7 @@ public abstract class BaseEntity {
     @Column(nullable = false, updatable = false)
     private UUID id;
 
-    protected BaseEntity() {
-    }
+    protected BaseEntity() {}
 
     public UUID getId() {
         return id;
@@ -26,5 +25,16 @@ public abstract class BaseEntity {
 
     public void setId(UUID id) {
         this.id = id;
+    }
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private java.time.OffsetDateTime createdAt = java.time.OffsetDateTime.now();
+
+    public java.time.OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(java.time.OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }
