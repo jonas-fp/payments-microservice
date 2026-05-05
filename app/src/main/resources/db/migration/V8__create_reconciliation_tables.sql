@@ -42,7 +42,7 @@ CREATE TABLE processor_statement_rows (
     record_type VARCHAR(32) NOT NULL,
     processor_reference VARCHAR(128) NOT NULL,
     amount NUMERIC(15,2) NOT NULL,
-    currency CHAR(3) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_processor_statement_rows_reconciliation_run
         FOREIGN KEY (reconciliation_run_id) REFERENCES reconciliation_runs (id),
