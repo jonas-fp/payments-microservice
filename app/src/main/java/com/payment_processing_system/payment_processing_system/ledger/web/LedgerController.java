@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.payment_processing_system.payment_processing_system.ledger.application.LedgerService;
 import com.payment_processing_system.payment_processing_system.ledger.web.dto.AccountBalanceResponse;
+import com.payment_processing_system.payment_processing_system.ledger.web.dto.TrialBalanceResponse;
 
 @RestController
 @RequestMapping("/v1/payments/subledger")
@@ -42,5 +43,18 @@ public class LedgerController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
+    }
+
+    @GetMapping("/trial-balance")
+    public ResponseEntity<TrialBalanceResponse> getTrialBalance(
+        @RequestParam(required = false) @DateTimeFormat(
+            iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime asOf) {
+
+        if (asOf == null) {
+            asOf = OffsetDateTime.now();
+        }
+
+        TrialBalanceResponse response = ledgerService.getTrialBalance(asOf);
+        return ResponseEntity.ok(response);
     }
 }
