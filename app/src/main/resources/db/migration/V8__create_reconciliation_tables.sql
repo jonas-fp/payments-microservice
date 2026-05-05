@@ -52,7 +52,7 @@ CREATE TABLE processor_statement_rows (
     CONSTRAINT chk_processor_statement_rows_amount_non_negative 
         CHECK (amount >= 0),
     CONSTRAINT chk_processor_statement_rows_currency
-        CHECK (currency IN ('USD', 'CAD'))
+        CHECK (currency IN ('USD'))
 );
 
 GRANT SELECT ON processor_statement_rows TO payments_app;
