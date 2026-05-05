@@ -20,9 +20,9 @@ spring:
     properties:
       hibernate:
         jdbc:
-          batch_size: 50
-          order_inserts: true
-          order_updates: true
+          '[batch_size]': 50
+          '[order_inserts]': true
+          '[order_updates]': true
 
   flyway:
     enabled: true
