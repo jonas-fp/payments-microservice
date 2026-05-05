@@ -11,13 +11,11 @@ import org.springframework.data.repository.query.Param;
 
 public interface JournalLineRepository
     extends JpaRepository<JournalLineEntity, UUID> {
-    @Query(
-        """
-        SELECT jl FROM JournalLineEntity jl 
-        WHERE jl.ledgerAccountId = :accountId 
+    @Query("""
+        SELECT jl FROM JournalLineEntity jl
+        WHERE jl.ledgerAccountId = :accountId
         AND jl.createdAt <= :asOf
-        """
-    )
+        """)
     List<JournalLineEntity> findByLedgerAccountIdAndCreatedAtBefore(
         @Param("accountId") UUID accountId,
         @Param("asOf") OffsetDateTime asOf);
