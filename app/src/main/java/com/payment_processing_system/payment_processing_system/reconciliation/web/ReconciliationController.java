@@ -59,4 +59,16 @@ public class ReconciliationController {
             throw e;
         }
     }
+
+    @GetMapping("/runs/{runId}")
+    public ResponseEntity<ReconciliationRunSummary> getRun(
+        @PathVariable UUID runId) {
+        try {
+            ReconciliationRunSummary summary =
+                reconciliationService.getRunSummary(runId);
+            return ResponseEntity.ok(summary);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
 }
