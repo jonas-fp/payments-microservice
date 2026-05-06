@@ -119,8 +119,7 @@ public class PaymentService {
         keyEntity = idempotencyKeyRepository.save(keyEntity);
 
         // 3. Process the authorization (Mocking processor call)
-        String processorReference = "proc_"
-            + UUID.randomUUID().toString().substring(0, 8);
+        String processorReference = "proc_" + idempotencyKey.substring(0, 8);
 
         // 4. Create Payment
         PaymentEntity payment = new PaymentEntity();
@@ -217,8 +216,8 @@ public class PaymentService {
         }
 
         // 4. Process the capture (Mocking processor call)
-        String processorCaptureReference = "cap_"
-            + UUID.randomUUID().toString().substring(0, 8);
+        String processorCaptureReference =
+            "cap_" + idempotencyKey.substring(0, 8);
 
         // 5. Create Payment Event
         PaymentEventEntity event = new PaymentEventEntity();
@@ -353,7 +352,7 @@ public class PaymentService {
 
         // 4. Process the refund (Mocking processor call)
         String processorRefundReference =
-            "ref_" + UUID.randomUUID().toString().substring(0, 8);
+            "ref_" + idempotencyKey.substring(0, 8);
 
         // 5. Create Payment Event
         PaymentEventEntity event = new PaymentEventEntity();
