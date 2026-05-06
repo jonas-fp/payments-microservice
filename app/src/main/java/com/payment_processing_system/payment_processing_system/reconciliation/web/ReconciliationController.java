@@ -43,4 +43,20 @@ public class ReconciliationController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
+
+    @PostMapping("/runs")
+    public ResponseEntity<Map<String, UUID>> runReconciliation(
+        @RequestParam @DateTimeFormat(
+            iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
+        try {
+            UUID runId = reconciliationService.runReconciliation(businessDate);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("runId", runId));
+        } catch (IllegalStateException e) {
+            if (e.getMessage().contains("No PENDING reconciliation")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            throw e;
+        }
+    }
 }
