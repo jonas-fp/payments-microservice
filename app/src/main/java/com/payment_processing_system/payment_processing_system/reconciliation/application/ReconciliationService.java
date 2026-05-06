@@ -3,12 +3,18 @@ package com.payment_processing_system.payment_processing_system.reconciliation.a
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
+import com.payment_processing_system.payment_processing_system.entity.CaptureEntity;
+import com.payment_processing_system.payment_processing_system.entity.RefundEntity;
 import com.payment_processing_system.payment_processing_system.reconciliation.domain.ProcessorStatementRow;
+import com.payment_processing_system.payment_processing_system.reconciliation.domain.ReconciliationBreak;
 import com.payment_processing_system.payment_processing_system.reconciliation.domain.ReconciliationRun;
 import com.payment_processing_system.payment_processing_system.reconciliation.domain.ReconciliationRunStatus;
 import com.payment_processing_system.payment_processing_system.reconciliation.infra.ProcessorStatementRowRepository;
+import com.payment_processing_system.payment_processing_system.reconciliation.infra.ReconciliationBreakRepository;
 import com.payment_processing_system.payment_processing_system.reconciliation.infra.ReconciliationRunRepository;
 import com.payment_processing_system.payment_processing_system.reconciliation.web.dto.ProcessorStatementCsvRow;
+import com.payment_processing_system.payment_processing_system.repository.CaptureRepository;
+import com.payment_processing_system.payment_processing_system.repository.RefundRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,21 +22,31 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ReconciliationService {
 
     private final ReconciliationRunRepository runRepository;
     private final ProcessorStatementRowRepository rowRepository;
+    private final ReconciliationBreakRepository breakRepository;
+    private final CaptureRepository captureRepository;
+    private final RefundRepository refundRepository;
     private final CsvMapper csvMapper;
 
     public ReconciliationService(ReconciliationRunRepository runRepository,
-        ProcessorStatementRowRepository rowRepository) {
+        ProcessorStatementRowRepository rowRepository,
+        ReconciliationBreakRepository breakRepository,
+        CaptureRepository captureRepository,
+        RefundRepository refundRepository) {
         this.runRepository = runRepository;
         this.rowRepository = rowRepository;
+        this.breakRepository = breakRepository;
+        this.captureRepository = captureRepository;
+        this.refundRepository = refundRepository;
         this.csvMapper = new CsvMapper();
     }
 
@@ -62,6 +78,159 @@ public class ReconciliationService {
         }
 
         return run.getId();
+    }
+
+    @Transactional
+    public UUID runReconciliation(LocalDate businessDate) {
+        // 1. Find the PENDING run
+        ReconciliationRun run = runRepository
+            .findByBusinessDateAndStatus(businessDate,
+                ReconciliationRunStatus.PENDING)
+            .orElseThrow(() -> new IllegalStateException(
+                "No PENDING reconciliation run found for " + businessDate));
+
+        // 2. Update status to RUNNING
+        run.setStatus(ReconciliationRunStatus.RUNNING);
+        run.setStartedAt(OffsetDateTime.now());
+        run = runRepository.save(run);
+
+        try {
+            // 3. Fetch data
+            List<ProcessorStatementRow> statementRows =
+                rowRepository.findAllByReconciliationRunId(run.getId());
+
+            OffsetDateTime start =
+                businessDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+            OffsetDateTime end = businessDate.plusDays(1).atStartOfDay()
+                .atOffset(ZoneOffset.UTC);
+
+            List<CaptureEntity> captures =
+                captureRepository.findAllByCreatedAtBetween(start, end);
+            List<RefundEntity> refunds =
+                refundRepository.findAllByCreatedAtBetween(start, end);
+
+            // 4. Matching Logic
+            Set<UUID> matchedCaptureIds = new HashSet<>();
+            Set<UUID> matchedRefundIds = new HashSet<>();
+            List<ReconciliationBreak> breaks = new ArrayList<>();
+
+            for (ProcessorStatementRow row : statementRows) {
+                if ("CAPTURE".equals(row.getRecordType())) {
+                    Optional<CaptureEntity> captureOpt = captures.stream()
+                        .filter(c -> c.getProcessorCaptureReference()
+                            .equals(row.getProcessorReference()))
+                        .findFirst();
+
+                    if (captureOpt.isPresent()) {
+                        CaptureEntity capture = captureOpt.get();
+                        matchedCaptureIds.add(capture.getId());
+                        if (capture.getAmount()
+                            .compareTo(row.getAmount()) != 0) {
+                            breaks.add(createAmountMismatchBreak(run, row,
+                                capture.getPaymentId(),
+                                String.format(
+                                    "Amount mismatch: Internal=%s, " +
+                                        "Processor=%s",
+                                    capture.getAmount(), row.getAmount())));
+                        }
+                    } else {
+                        breaks.add(createMissingInternalBreak(run, row,
+                            "No internal capture record found for processor "
+                                + "reference: "
+                                + row.getProcessorReference()));
+                    }
+                } else if ("REFUND".equals(row.getRecordType())) {
+                    Optional<RefundEntity> refundOpt = refunds.stream()
+                        .filter(r -> r.getProcessorRefundReference()
+                            .equals(row.getProcessorReference()))
+                        .findFirst();
+
+                    if (refundOpt.isPresent()) {
+                        RefundEntity refund = refundOpt.get();
+                        matchedRefundIds.add(refund.getId());
+                        if (refund.getAmount()
+                            .compareTo(row.getAmount()) != 0) {
+                            breaks.add(createAmountMismatchBreak(run, row,
+                                refund.getPaymentId(),
+                                String.format(
+                                    "Amount mismatch: Internal=%s, " +
+                                        "Processor=%s",
+                                    refund.getAmount(), row.getAmount())));
+                        }
+                    } else {
+                        breaks.add(createMissingInternalBreak(run, row,
+                            "No internal refund record found for processor " +
+                                "reference: "
+                                + row.getProcessorReference()));
+                    }
+                }
+            }
+
+            // 5. Identify Missing Processor Records
+            for (CaptureEntity capture : captures) {
+                if (!matchedCaptureIds.contains(capture.getId())) {
+                    breaks.add(createMissingProcessorBreak(run,
+                        capture.getPaymentId(),
+                        "Internal capture record missing from processor "
+                            + "statement: "
+                            + capture.getProcessorCaptureReference()));
+                }
+            }
+            for (RefundEntity refund : refunds) {
+                if (!matchedRefundIds.contains(refund.getId())) {
+                    breaks.add(createMissingProcessorBreak(run,
+                        refund.getPaymentId(),
+                        "Internal refund record missing from processor "
+                            + "statement: "
+                            + refund.getProcessorRefundReference()));
+                }
+            }
+
+            // 6. Save breaks
+            breakRepository.saveAll(breaks);
+
+            // 7. Complete run
+            run.setStatus(ReconciliationRunStatus.SUCCEEDED);
+        } catch (Exception e) {
+            run.setStatus(ReconciliationRunStatus.FAILED);
+            // NOTE: In a real app, we might log the error details somewhere
+        } finally {
+            run.setCompletedAt(OffsetDateTime.now());
+            runRepository.save(run);
+        }
+
+        return run.getId();
+    }
+
+    private ReconciliationBreak createMissingInternalBreak(
+        ReconciliationRun run, ProcessorStatementRow row, String details) {
+        ReconciliationBreak b = new ReconciliationBreak();
+        b.setReconciliationRun(run);
+        b.setProcessorStatementRow(row);
+        b.setBreakType("MISSING_INTERNAL_RECORD");
+        b.setBreakDetails(details);
+        return b;
+    }
+
+    private ReconciliationBreak createMissingProcessorBreak(
+        ReconciliationRun run, UUID paymentId, String details) {
+        ReconciliationBreak b = new ReconciliationBreak();
+        b.setReconciliationRun(run);
+        b.setPaymentId(paymentId);
+        b.setBreakType("MISSING_PROCESSOR_RECORD");
+        b.setBreakDetails(details);
+        return b;
+    }
+
+    private ReconciliationBreak createAmountMismatchBreak(ReconciliationRun run,
+        ProcessorStatementRow row, UUID paymentId, String details) {
+        ReconciliationBreak b = new ReconciliationBreak();
+        b.setReconciliationRun(run);
+        b.setProcessorStatementRow(row);
+        b.setPaymentId(paymentId);
+        b.setBreakType("AMOUNT_MISMATCH");
+        b.setBreakDetails(details);
+        return b;
     }
 
     private ProcessorStatementRow mapToEntity(ReconciliationRun run,
