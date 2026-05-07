@@ -65,7 +65,10 @@ class ReconciliationControllerIntegrationTest {
     void cleanDatabase() {
         transactionTemplate.execute(status -> {
             entityManager.createNativeQuery(
-                "TRUNCATE TABLE reconciliation_breaks, processor_statement_rows, reconciliation_runs "
+                "TRUNCATE TABLE journal_lines, journal_entries, captures, " +
+                    "refunds, payment_events, payments, idempotency_keys, " +
+                    "reconciliation_breaks, processor_statement_rows, " +
+                    "reconciliation_runs "
                     +
                     "RESTART IDENTITY CASCADE")
                 .executeUpdate();
