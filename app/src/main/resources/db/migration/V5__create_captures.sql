@@ -20,16 +20,16 @@ CREATE TABLE captures (
 );
 
 -- Prevent the payments_app from changing anything it shouldn't
-GRANT SELECT ON captures TO payments_app; 
+-- GRANT SELECT ON captures TO payments_app; 
 
-GRANT INSERT (
-        id, payment_id, payment_event_id, amount, currency, 
-        processor_capture_reference
-    ) ON captures TO payments_app;
+-- GRANT INSERT (
+--         id, payment_id, payment_event_id, amount, currency, 
+--         processor_capture_reference
+--     ) ON captures TO payments_app;
 
-GRANT UPDATE (
-        processor_capture_reference
-    ) ON captures TO payments_app;
+-- GRANT UPDATE (
+--         processor_capture_reference
+--     ) ON captures TO payments_app;
 
 -- Prevent anyone from deleting a capture record
 CREATE OR REPLACE FUNCTION block_capture_deletions()
@@ -120,7 +120,7 @@ AFTER INSERT ON captures
 FOR EACH ROW EXECUTE FUNCTION update_payment_captured_amount();
 
 REVOKE EXECUTE ON FUNCTION update_payment_captured_amount() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION update_payment_captured_amount() TO payments_app;
+-- GRANT EXECUTE ON FUNCTION update_payment_captured_amount() TO payments_app;
 
 -- Ensure that each capture has a corresponding journal entry
 CREATE OR REPLACE FUNCTION validate_capture_has_journal_entry()

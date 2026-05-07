@@ -25,15 +25,15 @@ CREATE TABLE reconciliation_runs (
     )
 );
 
-GRANT SELECT ON reconciliation_runs TO payments_app;
+-- GRANT SELECT ON reconciliation_runs TO payments_app;
 
-GRANT INSERT (
-        id, business_date, status, started_at, completed_at
-    ) ON reconciliation_runs TO payments_app;
+-- GRANT INSERT (
+--         id, business_date, status, started_at, completed_at
+--     ) ON reconciliation_runs TO payments_app;
 
-GRANT UPDATE (
-        status, started_at, completed_at
-    ) ON reconciliation_runs TO payments_app;
+-- GRANT UPDATE (
+--         status, started_at, completed_at
+--     ) ON reconciliation_runs TO payments_app;
 
 CREATE TABLE processor_statement_rows (
     id UUID PRIMARY KEY,
@@ -55,12 +55,12 @@ CREATE TABLE processor_statement_rows (
         CHECK (currency IN ('USD'))
 );
 
-GRANT SELECT ON processor_statement_rows TO payments_app;
+-- GRANT SELECT ON processor_statement_rows TO payments_app;
 
-GRANT INSERT (
-        id, reconciliation_run_id, business_date, record_type, 
-        processor_reference, amount, currency
-    ) ON processor_statement_rows TO payments_app;
+-- GRANT INSERT (
+--         id, reconciliation_run_id, business_date, record_type, 
+--         processor_reference, amount, currency
+--     ) ON processor_statement_rows TO payments_app;
 
 CREATE TABLE reconciliation_breaks (
     id UUID PRIMARY KEY,
@@ -115,11 +115,11 @@ CREATE TABLE reconciliation_breaks (
     )
 );
 
-GRANT SELECT ON reconciliation_breaks TO payments_app;
-GRANT INSERT (
-        id, reconciliation_run_id, processor_statement_row_id, payment_id, 
-        break_type, break_details
-    ) ON reconciliation_breaks TO payments_app;
+-- GRANT SELECT ON reconciliation_breaks TO payments_app;
+-- GRANT INSERT (
+--         id, reconciliation_run_id, processor_statement_row_id, payment_id, 
+--         break_type, break_details
+--     ) ON reconciliation_breaks TO payments_app;
 
 CREATE INDEX idx_processor_statement_rows_reconciliation_run_id
     ON processor_statement_rows (reconciliation_run_id);

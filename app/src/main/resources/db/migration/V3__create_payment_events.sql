@@ -24,19 +24,19 @@ CREATE TABLE payment_events (
     )
 );
 
-GRANT SELECT ON payment_events TO payments_app;
+-- GRANT SELECT ON payment_events TO payments_app;
 
-GRANT INSERT (
-    payment_id, event_type, processor_event_reference, processor_response,
-    idempotency_key_id
-) ON payment_events TO payments_app;
+-- GRANT INSERT (
+--     payment_id, event_type, processor_event_reference, processor_response,
+--     idempotency_key_id
+-- ) ON payment_events TO payments_app;
 
-CREATE UNIQUE INDEX uk_payment_events_processor_event_reference
-    ON payment_events (processor_event_reference)
-    WHERE processor_event_reference IS NOT NULL;
+-- CREATE UNIQUE INDEX uk_payment_events_processor_event_reference
+--     ON payment_events (processor_event_reference)
+--     WHERE processor_event_reference IS NOT NULL;
 
-CREATE INDEX idx_payment_events_payment_id 
-    ON payment_events(payment_id);
+-- CREATE INDEX idx_payment_events_payment_id 
+--     ON payment_events(payment_id);
 
 -- Ensure that capture and refund success events always have a corresponding
 -- record in the captures or refunds table

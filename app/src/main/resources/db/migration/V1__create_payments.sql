@@ -44,16 +44,16 @@ CREATE TABLE payments (
 );
 
 -- Prevent the payments_app from changing anything it shouldn't
-GRANT SELECT ON payments TO payments_app; 
+-- GRANT SELECT ON payments TO payments_app; 
 
-GRANT INSERT (
-        id, customer_id, invoice_id, authorized_amount, currency, status, 
-        processor_payment_reference
-    ) ON payments TO payments_app;
+-- GRANT INSERT (
+--         id, customer_id, invoice_id, authorized_amount, currency, status, 
+--         processor_payment_reference
+--     ) ON payments TO payments_app;
 
-GRANT UPDATE (
-        processor_payment_reference, status
-    ) ON payments TO payments_app;
+-- GRANT UPDATE (
+--         processor_payment_reference, status
+--     ) ON payments TO payments_app;
 
 -- Prevent anyone from deleting a payment record
 CREATE OR REPLACE FUNCTION block_payment_deletions()
