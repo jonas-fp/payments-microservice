@@ -32,19 +32,19 @@ import java.util.stream.Collectors;
 public class ReconciliationService {
 
     private final ReconciliationRunRepository runRepository;
-    private final ProcessorStatementRowRepository rowRepository;
+    private final ProcessorStatementRowRepository ProcessorStatementRowRepository;
     private final ReconciliationBreakRepository breakRepository;
     private final CaptureRepository captureRepository;
     private final RefundRepository refundRepository;
     private final CsvMapper csvMapper;
 
     public ReconciliationService(ReconciliationRunRepository runRepository,
-        ProcessorStatementRowRepository rowRepository,
+        ProcessorStatementRowRepository ProcessorStatementRowRepository,
         ReconciliationBreakRepository breakRepository,
         CaptureRepository captureRepository,
         RefundRepository refundRepository) {
         this.runRepository = runRepository;
-        this.rowRepository = rowRepository;
+        this.ProcessorStatementRowRepository = ProcessorStatementRowRepository;
         this.breakRepository = breakRepository;
         this.captureRepository = captureRepository;
         this.refundRepository = refundRepository;
@@ -96,7 +96,7 @@ public class ReconciliationService {
             }
 
             // 3. Save all rows
-            rowRepository.saveAll(entities);
+            ProcessorStatementRowRepository.saveAll(entities);
         }
 
         return run.getId();
@@ -119,7 +119,8 @@ public class ReconciliationService {
         try {
             // 3. Fetch data
             List<ProcessorStatementRow> statementRows =
-                rowRepository.findAllByReconciliationRunId(run.getId());
+                ProcessorStatementRowRepository
+                    .findAllByReconciliationRunId(run.getId());
 
             OffsetDateTime start =
                 businessDate.atStartOfDay().atOffset(ZoneOffset.UTC);
