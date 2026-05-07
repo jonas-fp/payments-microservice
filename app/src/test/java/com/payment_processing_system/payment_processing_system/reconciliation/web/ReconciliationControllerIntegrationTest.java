@@ -1,7 +1,12 @@
 package com.payment_processing_system.payment_processing_system.reconciliation.web;
 
+import com.payment_processing_system.payment_processing_system.payments.web.dto.AuthorizePaymentRequest;
+import com.payment_processing_system.payment_processing_system.payments.web.dto.CapturePaymentRequest;
+import com.payment_processing_system.payment_processing_system.reconciliation.domain.ReconciliationRunStatus;
 import com.payment_processing_system.payment_processing_system.reconciliation.infra.ProcessorStatementRowRepository;
+import com.payment_processing_system.payment_processing_system.reconciliation.infra.ReconciliationBreakRepository;
 import com.payment_processing_system.payment_processing_system.reconciliation.infra.ReconciliationRunRepository;
+import com.payment_processing_system.payment_processing_system.reconciliation.web.dto.ReconciliationRunSummary;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +22,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +51,9 @@ class ReconciliationControllerIntegrationTest {
 
     @Autowired
     private ProcessorStatementRowRepository rowRepository;
+
+    @Autowired
+    private ReconciliationBreakRepository breakRepository;
 
     @Autowired
     private EntityManager entityManager;
