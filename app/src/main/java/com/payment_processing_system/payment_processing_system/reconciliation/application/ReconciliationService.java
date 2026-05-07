@@ -13,6 +13,7 @@ import com.payment_processing_system.payment_processing_system.reconciliation.in
 import com.payment_processing_system.payment_processing_system.reconciliation.infra.ReconciliationBreakRepository;
 import com.payment_processing_system.payment_processing_system.reconciliation.infra.ReconciliationRunRepository;
 import com.payment_processing_system.payment_processing_system.reconciliation.web.dto.ProcessorStatementCsvRow;
+import com.payment_processing_system.payment_processing_system.reconciliation.web.dto.ReconciliationRunSummary;
 import com.payment_processing_system.payment_processing_system.repository.CaptureRepository;
 import com.payment_processing_system.payment_processing_system.repository.RefundRepository;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,27 @@ public class ReconciliationService {
         this.captureRepository = captureRepository;
         this.refundRepository = refundRepository;
         this.csvMapper = new CsvMapper();
+    }
+
+    @Transactional(readOnly = true)
+    public ReconciliationRunSummary getRunSummary(UUID runId) {
+        ReconciliationRun run = runRepository.findById(runId)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Reconciliation run not found: " + runId));
+
+        List<Object[]> breakCounts = breakRepository.countBreaksByType(runId);
+        Map<String, Long> summary = breakCounts.stream()
+            .collect(Collectors.toMap(
+                row -> (String) row[0],
+                row -> (Long) row[1]));
+
+        return new ReconciliationRunSummary(
+            run.getId(),
+            run.getBusinessDate(),
+            run.getStatus(),
+            run.getStartedAt(),
+            run.getCompletedAt(),
+            summary);
     }
 
     @Transactional
