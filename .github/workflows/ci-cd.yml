@@ -30,7 +30,7 @@ jobs:
   cd:
     name: Build and Deploy to ECS
     needs: ci
-    if: github.event_name == 'push' && false # NOTE: Disable CD for now
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:

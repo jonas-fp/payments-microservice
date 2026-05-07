@@ -31,13 +31,13 @@ CREATE TABLE idempotency_keys (
     )
 );
 
-GRANT SELECT ON idempotency_keys TO payments_app;
+-- GRANT SELECT ON idempotency_keys TO payments_app;
 
-GRANT INSERT (
-    action_type, customer_id, idempotency_key, request_hash, response_body,
-    event_id, resource_id, response_code, response_status
-) ON idempotency_keys TO payments_app;
+-- GRANT INSERT (
+--     action_type, customer_id, idempotency_key, request_hash, response_body,
+--     event_id, resource_id, response_code, response_status
+-- ) ON idempotency_keys TO payments_app;
 
-GRANT UPDATE (
-    event_id, resource_id, response_body, response_code, response_status
-) ON idempotency_keys TO payments_app;
+-- GRANT UPDATE (
+--     event_id, resource_id, response_body, response_code, response_status
+-- ) ON idempotency_keys TO payments_app;

@@ -13,7 +13,7 @@ CREATE TABLE ledger_accounts (
             ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'))
 );
 
-GRANT SELECT ON ledger_accounts TO payments_app;
+-- GRANT SELECT ON ledger_accounts TO payments_app;
 
 CREATE TABLE journal_entries (
     id UUID PRIMARY KEY,
@@ -40,11 +40,11 @@ CREATE TABLE journal_entries (
         )
 );
 
-GRANT SELECT ON journal_entries TO payments_app;
+-- GRANT SELECT ON journal_entries TO payments_app;
 
-GRANT INSERT (
-        id, payment_id, refund_id, capture_id, transaction_type
-    ) ON journal_entries TO payments_app;
+-- GRANT INSERT (
+--         id, payment_id, refund_id, capture_id, transaction_type
+--     ) ON journal_entries TO payments_app;
 
 CREATE TABLE journal_lines (
     id UUID PRIMARY KEY,
@@ -67,11 +67,11 @@ CREATE TABLE journal_lines (
     CONSTRAINT chk_valid_currency_code CHECK (currency IN ('USD', 'CAD'))
 );
 
-GRANT SELECT ON journal_lines TO payments_app;
+-- GRANT SELECT ON journal_lines TO payments_app;
 
-GRANT INSERT (
-        id, journal_entry_id, ledger_account_id, direction, amount, currency
-    ) ON journal_lines TO payments_app;
+-- GRANT INSERT (
+--         id, journal_entry_id, ledger_account_id, direction, amount, currency
+--     ) ON journal_lines TO payments_app;
 
 -- Ensure that the ledger is immutable
 CREATE OR REPLACE FUNCTION block_ledger_updates_and_deletes()

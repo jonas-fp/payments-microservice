@@ -19,17 +19,17 @@ CREATE TABLE refunds (
     CONSTRAINT chk_valid_currency_code CHECK (currency IN ('USD', 'CAD'))
 );
 
--- Prevent the payments_app from changing anything it shouldn't
-GRANT SELECT ON refunds TO payments_app; 
+-- -- Prevent the payments_app from changing anything it shouldn't
+-- GRANT SELECT ON refunds TO payments_app; 
 
-GRANT INSERT (
-        id, payment_id, payment_event_id, amount, currency, 
-        processor_refund_reference
-    ) ON refunds TO payments_app;
+-- GRANT INSERT (
+--         id, payment_id, payment_event_id, amount, currency, 
+--         processor_refund_reference
+--     ) ON refunds TO payments_app;
 
-GRANT UPDATE (
-        processor_refund_reference
-    ) ON refunds TO payments_app;
+-- GRANT UPDATE (
+--         processor_refund_reference
+--     ) ON refunds TO payments_app;
 
 -- Prevent anyone from deleting a refund record
 CREATE OR REPLACE FUNCTION block_refund_deletions()
@@ -118,7 +118,7 @@ AFTER INSERT ON refunds
 FOR EACH ROW EXECUTE FUNCTION update_payment_refunded_amount();
 
 REVOKE EXECUTE ON FUNCTION update_payment_refunded_amount() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION update_payment_refunded_amount() TO payments_app;
+-- GRANT EXECUTE ON FUNCTION update_payment_refunded_amount() TO payments_app;
 
 -- Ensure that each refund has a corresponding journal entry
 CREATE OR REPLACE FUNCTION validate_refund_has_journal_entry()
