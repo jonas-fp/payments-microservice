@@ -50,7 +50,7 @@ class ReconciliationControllerIntegrationTest {
     private ReconciliationRunRepository runRepository;
 
     @Autowired
-    private ProcessorStatementRowRepository rowRepository;
+    private ProcessorStatementRowRepository processorStatementRowRepository;
 
     @Autowired
     private ReconciliationBreakRepository breakRepository;
@@ -108,9 +108,10 @@ class ReconciliationControllerIntegrationTest {
 
                 // 3. Verify database state
                 assertThat(runRepository.existsById(runId)).isTrue();
-                assertThat(rowRepository.findAll()).hasSize(2);
+                assertThat(processorStatementRowRepository.findAll())
+                    .hasSize(2);
 
-                var rows = rowRepository.findAll();
+                var rows = processorStatementRowRepository.findAll();
                 assertThat(rows).anySatisfy(row -> {
                     assertThat(row.getProcessorReference()).isEqualTo("proc_1");
                     assertThat(row.getAmount()).isEqualByComparingTo("100.00");
@@ -189,7 +190,7 @@ class ReconciliationControllerIntegrationTest {
         String keyA = UUID.randomUUID().toString();
         createCapture(keyA, new BigDecimal("10000"));
 
-        // Payment B: Missing from processor (Internal exists, Processor 
+        // Payment B: Missing from processor (Internal exists, Processor
         // missing)
         String keyB = UUID.randomUUID().toString();
         createCapture(keyB, new BigDecimal("5000"));
