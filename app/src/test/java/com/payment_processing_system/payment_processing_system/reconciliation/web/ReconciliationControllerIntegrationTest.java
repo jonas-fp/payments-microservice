@@ -167,6 +167,78 @@ class ReconciliationControllerIntegrationTest {
         assertThat(breakRepository.count()).isEqualTo(0);
     }
 
+    @Test
+    void runReconciliation_withBreaks_identifiesAllDiscrepancies() {
+        LocalDate businessDate = LocalDate.now();
+
+        // 1. Setup internal records
+        // Payment A: Amount mismatch (Internal 100, Processor 90)
+        String keyA = UUID.randomUUID().toString();
+        createCapture(keyA, new BigDecimal("10000"));
+
+        // Payment B: Missing from processor (Internal exists, Processor 
+        // missing)
+        String keyB = UUID.randomUUID().toString();
+        createCapture(keyB, new BigDecimal("5000"));
+
+        // 2. Import processor statement
+        // Row A: Amount mismatch
+        // Row C: Missing internal (Processor exists, Internal missing)
+        String csvContent = String.format("""
+            business_date,record_type,processor_reference,amount,currency
+            %s,CAPTURE,cap_%s,90.00,USD
+            %s,CAPTURE,cap_missing_internal,75.00,USD
+            """, businessDate, keyA.substring(0, 8), businessDate);
+
+        importCsv(businessDate, csvContent);
+
+        // 3. Run reconciliation
+        webTestClient.post()
+            .uri(uriBuilder -> uriBuilder
+                .path("/v1/payments/reconciliation/runs")
+                .queryParam("businessDate", businessDate.toString()).build())
+            .exchange().expectStatus().isCreated();
+
+        // 4. Verify results
+        UUID runId = runRepository
+            .findByBusinessDateAndStatus(businessDate,
+                ReconciliationRunStatus.SUCCEEDED)
+            .orElseThrow().getId();
+
+        webTestClient.get()
+            .uri("/v1/payments/reconciliation/runs/{runId}", runId)
+            .exchange().expectStatus().isOk()
+            .expectBody(ReconciliationRunSummary.class)
+            .consumeWith(result -> {
+                ReconciliationRunSummary summary = result.getResponseBody();
+                assertThat(summary.status())
+                    .isEqualTo(ReconciliationRunStatus.SUCCEEDED);
+                assertThat(summary.breakSummary())
+                    .containsEntry("AMOUNT_MISMATCH", 1L);
+                assertThat(summary.breakSummary())
+                    .containsEntry("MISSING_INTERNAL_RECORD", 1L);
+                assertThat(summary.breakSummary())
+                    .containsEntry("MISSING_PROCESSOR_RECORD", 1L);
+            });
+    }
+
+    private void createCapture(String idempotencyKey, BigDecimal amountMinor) {
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "cust", UUID.randomUUID(), amountMinor, "USD");
+        webTestClient.post().uri("/v1/payments/authorize")
+            .header("Idempotency-Key", idempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON).bodyValue(authRequest)
+            .exchange().expectStatus().isCreated();
+
+        CapturePaymentRequest capRequest =
+            new CapturePaymentRequest("cust", amountMinor, "USD");
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", getPaymentId(idempotencyKey))
+            .header("Idempotency-Key", idempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON).bodyValue(capRequest)
+            .exchange().expectStatus().isCreated();
+    }
+
     private UUID getPaymentId(String idempotencyKey) {
         return (UUID) entityManager.createNativeQuery(
             "SELECT resource_id FROM idempotency_keys " +
