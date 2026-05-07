@@ -110,4 +110,82 @@ class ReconciliationControllerIntegrationTest {
                 });
             });
     }
+
+    @Test
+    void runReconciliation_withoutBreaks_matchesAllRecords() {
+        LocalDate businessDate = LocalDate.now();
+        String idempotencyKey = UUID.randomUUID().toString();
+
+        // 1. Create internal record (Authorize + Capture)
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "cust-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+        webTestClient.post().uri("/v1/payments/authorize")
+            .header("Idempotency-Key", idempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON).bodyValue(authRequest)
+            .exchange().expectStatus().isCreated();
+
+        CapturePaymentRequest capRequest =
+            new CapturePaymentRequest("cust-1", new BigDecimal("10000"), "USD");
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", getPaymentId(idempotencyKey))
+            .header("Idempotency-Key", idempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON).bodyValue(capRequest)
+            .exchange().expectStatus().isCreated();
+
+        // 2. Import matching processor statement
+        String csvContent = String.format("""
+            business_date,record_type,processor_reference,amount,currency
+            %s,CAPTURE,cap_%s,100.00,USD
+            """, businessDate, idempotencyKey.substring(0, 8));
+
+        importCsv(businessDate, csvContent);
+
+        // 3. Run reconciliation
+        webTestClient.post()
+            .uri(uriBuilder -> uriBuilder
+                .path("/v1/payments/reconciliation/runs")
+                .queryParam("businessDate", businessDate.toString()).build())
+            .exchange().expectStatus().isCreated();
+
+        // 4. Verify results
+        UUID runId = runRepository
+            .findByBusinessDateAndStatus(businessDate,
+                ReconciliationRunStatus.SUCCEEDED)
+            .orElseThrow().getId();
+
+        webTestClient.get()
+            .uri("/v1/payments/reconciliation/runs/{runId}", runId)
+            .exchange().expectStatus().isOk()
+            .expectBody(ReconciliationRunSummary.class)
+            .consumeWith(result -> {
+                ReconciliationRunSummary summary = result.getResponseBody();
+                assertThat(summary.status())
+                    .isEqualTo(ReconciliationRunStatus.SUCCEEDED);
+                assertThat(summary.breakSummary()).isEmpty();
+            });
+
+        assertThat(breakRepository.count()).isEqualTo(0);
+    }
+
+    private UUID getPaymentId(String idempotencyKey) {
+        return (UUID) entityManager.createNativeQuery(
+            "SELECT resource_id FROM idempotency_keys " +
+                "WHERE idempotency_key = :key AND action_type = 'AUTHORIZE'")
+            .setParameter("key", idempotencyKey)
+            .getSingleResult();
+    }
+
+    private void importCsv(LocalDate businessDate, String csvContent) {
+        MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
+        bodyBuilder.part("businessDate", businessDate.toString());
+        bodyBuilder.part("file", csvContent.getBytes())
+            .header("Content-Disposition",
+                "form-data; name=\"file\"; filename=\"statement.csv\"")
+            .contentType(MediaType.TEXT_PLAIN);
+
+        webTestClient.post().uri("/v1/payments/reconciliation/imports")
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .bodyValue(bodyBuilder.build())
+            .exchange().expectStatus().isCreated();
+    }
 }
