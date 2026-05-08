@@ -48,3 +48,6 @@ Desktop.ini
 payments-connection.session.sql
 
 docs/
+
+# Python
+.venv
