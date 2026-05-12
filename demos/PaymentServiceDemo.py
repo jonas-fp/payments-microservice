@@ -14,7 +14,7 @@ class PaymentServiceDemo:
         self.idempotency_keys = []
 
     def demo_payment_lifecycle(self):
-        print("DEMOING PAYMENT LIFECYCLE...")
+        print("--- DEMOING PAYMENT LIFECYCLE ---")
         # 1. Authorize
         idem_key = str(uuid.uuid4())
         self.idempotency_keys.append(idem_key)
@@ -70,7 +70,7 @@ class PaymentServiceDemo:
         print(f"Success! Refund ID: {refund_id}\n")
 
     def demo_idempotency(self):
-        print("DEMOING IDEMPOTENT PAYMENT PROCESSING...")
+        print("--- DEMOING IDEMPOTENT PAYMENT PROCESSING ---")
         print("Sending the first authorization request...")
         idem_key = str(uuid.uuid4())
         authorize_body = {
@@ -111,7 +111,7 @@ class PaymentServiceDemo:
         )
 
     def demo_double_entry_subledger(self):
-        print("DEMOING DOUBLE-ENTRY SUBLEDGER...")
+        print("--- DEMOING DOUBLE-ENTRY SUBLEDGER ---")
         # Get account balance
         cash_clearing = '9d96ee97-3526-43a0-914c-190e2fb575c4'
 
@@ -136,7 +136,7 @@ class PaymentServiceDemo:
         print("\n")
 
     def demo_reconciliation(self):
-        print("DEMOING RECONCILIATION...")
+        print("--- DEMOING RECONCILIATION ---")
         proc_capture_ref = 'cap_' + self.idempotency_keys[-1][:8]
         proc_refund_ref = 'ref_' + self.idempotency_keys[-1][:8]
 
