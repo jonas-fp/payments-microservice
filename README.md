@@ -159,6 +159,7 @@ This project uses Terraform to manage infrastructure on AWS, which makes the env
 
 - real processor integration with webhooks (`Stripe` test mode)
 - idempotency key expiry and retry recovery for failed requests
+- concurrency improvements (optimistic locking)
 - chargebacks, disputes, and settlement-timing workflows
 - authorization expiry, authorization voids, incremental authorizations, multi-capture flows, and partial captures
 
