@@ -88,6 +88,8 @@ Ensure you have Docker installed:
 docker compose -f docker-compose.demo.yml up -d --build
 ```
 
+*Note: Wait about 15-20 seconds after this command is complete for the application to fully start before running the demo script.*
+
 ### 3. Run the Demo
 
 The demo script provides a narrated walkthrough of the payment lifecycle, idempotency, and reconciliation.
@@ -97,12 +99,19 @@ Ensure you have Python installed:
 ```bash
 cd ../demos
 
+# Create and activate virtual environment
 python -m venv .venv
-source venv/bin/activate
+source .venv/bin/activate  
+# For Windows: source .venv/Scripts/activate (Bash) or .venv\Scripts\activate.bat (CMD)
+
+# Install dependencies
 pip install -r requirements.txt
 
+# Run demo script
 python PaymentServiceDemo.py
 ```
+
+*Note: If you have Python installed and the script is not running, try the python3 command.*
 
 ### Sample Demo Output
 
