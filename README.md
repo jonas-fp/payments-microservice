@@ -72,34 +72,36 @@ graph TD
 
 ---
 
-## Getting Started
+## Demo Instructions
 
-### 1. Start the Infrastructure
-
-Ensure you have Docker and Docker Compose installed:
-
+### 1. Set Up Environment Variables
 ```bash
 cd infra
-docker-compose up -d
+cp .env.demo.example .env
 ```
 
-### 2. Run the Application
+### 2. Start the Application & Database
 
-You can run the Spring Boot app via Maven:
+Ensure you have Docker installed:
 
 ```bash
-cd ../app
-./mvnw spring-boot:run
+docker compose -f docker-compose.demo.yml up -d
 ```
 
 ### 3. Run the Demo
 
-The demo script provides a narrated walkthrough of the payment lifecycle, idempotency, and reconciliation:
+The demo script provides a narrated walkthrough of the payment lifecycle, idempotency, and reconciliation.
+
+Ensure you have Python installed:
 
 ```bash
 cd ../demos
-# (Optional) Create and activate a virtual environment
-python3 PaymentServiceDemo.py
+
+python -m venv .venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+python PaymentServiceDemo.py
 ```
 
 ### Sample Demo Output
