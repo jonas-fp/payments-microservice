@@ -6,9 +6,9 @@ This is a mock internal payments microservice for a fictional SaaS company built
 
 ## Purpose
 
-Coming from an accounting background, I used financial software every day for work, so I was curious to learn more about how these systems function, which led me to create this project.
+Coming from an accounting background, I used financial software every day for work, so I was curious to learn more about how these systems operate, which led me to create this project.
 
-I chose a payments service specifically because most software companies have code that processes customers' payments, and I wanted to learn more about how that was done at scale.
+I chose to build a payments service specifically because I wanted to learn more about how large software companies make online purchases possible.
 
 ---
 
@@ -67,7 +67,7 @@ graph TD
 
 - `app/`: Core Spring Boot application, including source code, tests, and the Dockerfile.
 - `infra/`: Terraform IaC (`main.tf`), Docker Compose files, and local infrastructure config.
-- `demos/`: Python demonstration scripts that walk through the API in action.
+- `demos/`: Python demonstration script that walks through the API in action.
 - `.github/workflows/`: GitHub Actions workflow definitions for automated testing and deployment.
 
 ---
@@ -141,7 +141,7 @@ I modeled reconciliation as a three-step workflow because it maps well to how pa
 
 ## Infrastructure as Code (Terraform)
 
-This project uses Terraform to set up and tear down infrastructure on AWS, which makes the environment reproducible, speeds up provisioning, and helps me control cloud costs.
+This project uses Terraform to manage infrastructure on AWS, which makes the environment reproducible, speeds up provisioning, and helps me control cloud costs.
 
 ### Managed Resources:
 
