@@ -6,9 +6,9 @@ This is a mock internal payments microservice for a fictional SaaS company built
 
 ## Purpose
 
-Coming from an accounting background, I used financial software every day for work, so I was curious to learn more about how these systems function, which led me to create this project.
+Coming from an accounting background, I used financial software every day for work, so I was curious to learn more about how these systems operate, which led me to create this project.
 
-I chose a payments service specifically because most software companies have code that processes customers' payments, and I wanted to learn more about how that was done at scale.
+I chose to build a payments service specifically because I wanted to learn more about how large software companies make online purchases possible.
 
 ---
 
@@ -67,40 +67,51 @@ graph TD
 
 - `app/`: Core Spring Boot application, including source code, tests, and the Dockerfile.
 - `infra/`: Terraform IaC (`main.tf`), Docker Compose files, and local infrastructure config.
-- `demos/`: Python demonstration scripts that walk through the API in action.
+- `demos/`: Python demonstration script that walks through the API in action.
 - `.github/workflows/`: GitHub Actions workflow definitions for automated testing and deployment.
 
 ---
 
-## Getting Started
+## Demo Instructions
 
-### 1. Start the Infrastructure
-
-Ensure you have Docker and Docker Compose installed:
-
+### 1. Set Up Environment Variables
 ```bash
 cd infra
-docker-compose up -d
+cp .env.demo.example .env
 ```
 
-### 2. Run the Application
+### 2. Start the Application & Database
 
-You can run the Spring Boot app via Maven:
+Ensure you have Docker installed:
 
 ```bash
-cd ../app
-./mvnw spring-boot:run
+docker compose -f docker-compose.demo.yml up -d --build
 ```
+
+*Note: Wait about 15-20 seconds after this command is complete for the application to fully start before running the demo script.*
 
 ### 3. Run the Demo
 
-The demo script provides a narrated walkthrough of the payment lifecycle, idempotency, and reconciliation:
+The demo script provides a narrated walkthrough of the payment lifecycle, idempotency, and reconciliation.
+
+Ensure you have Python installed:
 
 ```bash
 cd ../demos
-# (Optional) Create and activate a virtual environment
-python3 PaymentServiceDemo.py
+
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  
+# For Windows: source .venv/Scripts/activate (Bash) or .venv\Scripts\activate.bat (CMD)
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run demo script
+python PaymentServiceDemo.py
 ```
+
+*Note: If you have Python installed and the script is not running, try the python3 command.*
 
 ### Sample Demo Output
 
@@ -139,7 +150,7 @@ I modeled reconciliation as a three-step workflow because it maps well to how pa
 
 ## Infrastructure as Code (Terraform)
 
-This project uses Terraform to set up and tear down infrastructure on AWS, which makes the environment reproducible, speeds up provisioning, and helps me control cloud costs.
+This project uses Terraform to manage infrastructure on AWS, which makes the environment reproducible, speeds up provisioning, and helps me control cloud costs.
 
 ### Managed Resources:
 
@@ -157,6 +168,7 @@ This project uses Terraform to set up and tear down infrastructure on AWS, which
 
 - real processor integration with webhooks (`Stripe` test mode)
 - idempotency key expiry and retry recovery for failed requests
+- concurrency improvements (optimistic locking)
 - chargebacks, disputes, and settlement-timing workflows
 - authorization expiry, authorization voids, incremental authorizations, multi-capture flows, and partial captures
 
