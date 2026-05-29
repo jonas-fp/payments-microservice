@@ -85,7 +85,7 @@ cp .env.demo.example .env
 Ensure you have Docker installed:
 
 ```bash
-docker compose -f docker-compose.demo.yml up -d
+docker compose -f docker-compose.demo.yml up -d --build
 ```
 
 ### 3. Run the Demo
