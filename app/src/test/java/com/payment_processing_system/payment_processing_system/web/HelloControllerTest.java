@@ -35,13 +35,13 @@ class HelloControllerTest {
     void hello_onHelloPath_returnsGreeting() throws Exception {
         mockMvc.perform(get("/hello"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Hello there!"));
+                .andExpect(content().string("Hello there from Payments Microservice!"));
     }
 
     @Test
     void hello_onRootPath_returnsGreeting() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Hello there!"));
+                .andExpect(content().string("Hello there from Payments Microservice!"));
     }
 }
