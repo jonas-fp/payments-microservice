@@ -100,7 +100,7 @@ class PaymentServiceDemo:
         # avoid 409 Conflict, which happens when it is in progress
         time.sleep(1)
 
-        resp.raise_for_status()
+        resp_retry.raise_for_status()
         second_request_payment_id = resp_retry.json()['id']
 
         print(
