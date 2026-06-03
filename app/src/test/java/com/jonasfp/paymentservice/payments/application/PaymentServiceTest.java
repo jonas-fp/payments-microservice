@@ -24,7 +24,6 @@ import com.jonasfp.paymentservice.domain.PaymentStatus;
 import com.jonasfp.paymentservice.entity.IdempotencyKeyEntity;
 import com.jonasfp.paymentservice.entity.PaymentEntity;
 import com.jonasfp.paymentservice.entity.PaymentEventEntity;
-import com.jonasfp.paymentservice.payments.application.PaymentService;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
 import com.jonasfp.paymentservice.repository.CaptureRepository;

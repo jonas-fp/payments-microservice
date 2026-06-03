@@ -12,7 +12,6 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.jonasfp.paymentservice.domain.PaymentStatus;
 import com.jonasfp.paymentservice.entity.PaymentEntity;
-import com.jonasfp.paymentservice.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
