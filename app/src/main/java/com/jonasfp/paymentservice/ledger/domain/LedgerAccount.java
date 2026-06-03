@@ -1,12 +1,13 @@
-package com.jonasfp.paymentservice.entity;
+package com.jonasfp.paymentservice.ledger.domain;
 
+import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "ledger_accounts")
-public class LedgerAccountEntity extends BaseEntity {
+public class LedgerAccount extends BaseEntity {
 
     @Column(name = "account_code", nullable = false, unique = true, length = 64)
     private String accountCode;
@@ -17,7 +18,7 @@ public class LedgerAccountEntity extends BaseEntity {
     @Column(name = "account_type", nullable = false, length = 32)
     private String accountType;
 
-    public LedgerAccountEntity() {
+    public LedgerAccount() {
     }
 
     public String getAccountCode() {

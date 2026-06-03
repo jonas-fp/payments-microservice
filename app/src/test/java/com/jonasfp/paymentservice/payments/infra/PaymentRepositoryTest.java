@@ -1,4 +1,4 @@
-package com.jonasfp.paymentservice.repository;
+package com.jonasfp.paymentservice.payments.infra;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -11,7 +11,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.jonasfp.paymentservice.domain.PaymentStatus;
-import com.jonasfp.paymentservice.entity.PaymentEntity;
+import com.jonasfp.paymentservice.payments.domain.Payment;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @Testcontainers
 @Transactional
-public class RepositoryPersistenceTests {
+public class PaymentRepositoryTest {
 
     @Container
     @ServiceConnection
@@ -34,9 +34,9 @@ public class RepositoryPersistenceTests {
 
     @Test
     void paymentRepositoryCanSaveAndLoadPayments() {
-        PaymentEntity saved = paymentRepository.saveAndFlush(newPayment());
+        Payment saved = paymentRepository.saveAndFlush(newPayment());
 
-        PaymentEntity loaded = paymentRepository.findById(saved.getId())
+        Payment loaded = paymentRepository.findById(saved.getId())
             .orElseThrow();
 
         assertThat(loaded.getCustomerId()).isEqualTo("customer-1");
@@ -44,8 +44,8 @@ public class RepositoryPersistenceTests {
         assertThat(loaded.getCurrency()).isEqualTo("USD");
     }
 
-    private PaymentEntity newPayment() {
-        PaymentEntity payment = new PaymentEntity();
+    private Payment newPayment() {
+        Payment payment = new Payment();
         payment.setCustomerId("customer-1");
         payment.setInvoiceId(UUID.randomUUID());
         payment.setAuthorizedAmount(new BigDecimal("100.00"));

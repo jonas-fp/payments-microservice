@@ -3,7 +3,7 @@ package com.jonasfp.paymentservice.reconciliation.domain;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import com.jonasfp.paymentservice.entity.BaseEntity;
+import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 
 @Entity
 @Table(name = "reconciliation_runs")

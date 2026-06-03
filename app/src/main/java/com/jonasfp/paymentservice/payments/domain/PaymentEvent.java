@@ -1,8 +1,9 @@
-package com.jonasfp.paymentservice.entity;
+package com.jonasfp.paymentservice.payments.domain;
 
 import java.util.UUID;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.jonasfp.paymentservice.domain.PaymentEventType;
+import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -14,7 +15,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "payment_events")
-public class PaymentEventEntity extends BaseEntity {
+public class PaymentEvent extends BaseEntity {
 
     @Column(name = "payment_id", nullable = false)
     private UUID paymentId;
@@ -33,7 +34,7 @@ public class PaymentEventEntity extends BaseEntity {
     @Column(name = "idempotency_key_id")
     private UUID idempotencyKeyId;
 
-    public PaymentEventEntity() {
+    public PaymentEvent() {
     }
 
     public UUID getPaymentId() {

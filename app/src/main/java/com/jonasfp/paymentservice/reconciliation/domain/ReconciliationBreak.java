@@ -2,7 +2,7 @@ package com.jonasfp.paymentservice.reconciliation.domain;
 
 import jakarta.persistence.*;
 import java.util.UUID;
-import com.jonasfp.paymentservice.entity.BaseEntity;
+import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 
 @Entity
 @Table(name = "reconciliation_breaks")

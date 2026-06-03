@@ -16,11 +16,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import com.jonasfp.paymentservice.entity.LedgerAccountEntity;
+import com.jonasfp.paymentservice.ledger.domain.LedgerAccount;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
-import com.jonasfp.paymentservice.repository.LedgerAccountRepository;
+import com.jonasfp.paymentservice.ledger.infra.LedgerAccountRepository;
 import jakarta.persistence.EntityManager;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -65,7 +65,7 @@ class LedgerControllerIntegrationTest {
     @Test
     void getAccountBalance_afterCapture_returnsCorrectBalance() {
         // 1. Get the Cash Clearing account (Asset)
-        LedgerAccountEntity cashClearing =
+        LedgerAccount cashClearing =
             ledgerAccountRepository.findByAccountCode("10001")
                 .orElseThrow();
         UUID accountId = cashClearing.getId();

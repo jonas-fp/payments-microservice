@@ -1,4 +1,4 @@
-package com.jonasfp.paymentservice.entity;
+package com.jonasfp.paymentservice.infra.persistence;
 
 import java.util.UUID;
 

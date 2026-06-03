@@ -3,8 +3,8 @@ package com.jonasfp.paymentservice.reconciliation.application;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
-import com.jonasfp.paymentservice.entity.CaptureEntity;
-import com.jonasfp.paymentservice.entity.RefundEntity;
+import com.jonasfp.paymentservice.payments.domain.Capture;
+import com.jonasfp.paymentservice.payments.domain.Refund;
 import com.jonasfp.paymentservice.reconciliation.domain.ProcessorStatementRow;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationBreak;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationRun;
@@ -14,8 +14,8 @@ import com.jonasfp.paymentservice.reconciliation.infra.ReconciliationBreakReposi
 import com.jonasfp.paymentservice.reconciliation.infra.ReconciliationRunRepository;
 import com.jonasfp.paymentservice.reconciliation.web.dto.ProcessorStatementCsvRow;
 import com.jonasfp.paymentservice.reconciliation.web.dto.ReconciliationRunSummary;
-import com.jonasfp.paymentservice.repository.CaptureRepository;
-import com.jonasfp.paymentservice.repository.RefundRepository;
+import com.jonasfp.paymentservice.payments.infra.CaptureRepository;
+import com.jonasfp.paymentservice.payments.infra.RefundRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -127,9 +127,9 @@ public class ReconciliationService {
             OffsetDateTime end = businessDate.plusDays(1).atStartOfDay()
                 .atOffset(ZoneOffset.UTC);
 
-            List<CaptureEntity> captures =
+            List<Capture> captures =
                 captureRepository.findAllByCreatedAtBetween(start, end);
-            List<RefundEntity> refunds =
+            List<Refund> refunds =
                 refundRepository.findAllByCreatedAtBetween(start, end);
 
             // 4. Matching Logic
@@ -139,13 +139,13 @@ public class ReconciliationService {
 
             for (ProcessorStatementRow row : statementRows) {
                 if ("CAPTURE".equals(row.getRecordType())) {
-                    Optional<CaptureEntity> captureOpt = captures.stream()
+                    Optional<Capture> captureOpt = captures.stream()
                         .filter(c -> c.getProcessorCaptureReference()
                             .equals(row.getProcessorReference()))
                         .findFirst();
 
                     if (captureOpt.isPresent()) {
-                        CaptureEntity capture = captureOpt.get();
+                        Capture capture = captureOpt.get();
                         matchedCaptureIds.add(capture.getId());
                         if (capture.getAmount()
                             .compareTo(row.getAmount()) != 0) {
@@ -163,13 +163,13 @@ public class ReconciliationService {
                                 + row.getProcessorReference()));
                     }
                 } else if ("REFUND".equals(row.getRecordType())) {
-                    Optional<RefundEntity> refundOpt = refunds.stream()
+                    Optional<Refund> refundOpt = refunds.stream()
                         .filter(r -> r.getProcessorRefundReference()
                             .equals(row.getProcessorReference()))
                         .findFirst();
 
                     if (refundOpt.isPresent()) {
-                        RefundEntity refund = refundOpt.get();
+                        Refund refund = refundOpt.get();
                         matchedRefundIds.add(refund.getId());
                         if (refund.getAmount()
                             .compareTo(row.getAmount()) != 0) {
@@ -190,7 +190,7 @@ public class ReconciliationService {
             }
 
             // 5. Identify Missing Processor Records
-            for (CaptureEntity capture : captures) {
+            for (Capture capture : captures) {
                 if (!matchedCaptureIds.contains(capture.getId())) {
                     breaks.add(createMissingProcessorBreak(run,
                         capture.getPaymentId(),
@@ -199,7 +199,7 @@ public class ReconciliationService {
                             + capture.getProcessorCaptureReference()));
                 }
             }
-            for (RefundEntity refund : refunds) {
+            for (Refund refund : refunds) {
                 if (!matchedRefundIds.contains(refund.getId())) {
                     breaks.add(createMissingProcessorBreak(run,
                         refund.getPaymentId(),

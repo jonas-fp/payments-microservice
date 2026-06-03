@@ -1,15 +1,16 @@
-package com.jonasfp.paymentservice.entity;
+package com.jonasfp.paymentservice.payments.domain;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "refunds")
-public class RefundEntity extends BaseEntity {
+@Table(name = "captures")
+public class Capture extends BaseEntity {
 
     @Column(name = "payment_id", nullable = false)
     private UUID paymentId;
@@ -23,10 +24,11 @@ public class RefundEntity extends BaseEntity {
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 
-    @Column(name = "processor_refund_reference", length = 128)
-    private String processorRefundReference;
+    @Column(name = "processor_capture_reference", length = 128)
+    private String processorCaptureReference;
 
-    public RefundEntity() {}
+    public Capture() {
+    }
 
     public UUID getPaymentId() {
         return paymentId;
@@ -60,11 +62,11 @@ public class RefundEntity extends BaseEntity {
         this.currency = currency;
     }
 
-    public String getProcessorRefundReference() {
-        return processorRefundReference;
+    public String getProcessorCaptureReference() {
+        return processorCaptureReference;
     }
 
-    public void setProcessorRefundReference(String processorRefundReference) {
-        this.processorRefundReference = processorRefundReference;
+    public void setProcessorCaptureReference(String processorCaptureReference) {
+        this.processorCaptureReference = processorCaptureReference;
     }
 }

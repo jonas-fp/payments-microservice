@@ -23,10 +23,10 @@ import com.jonasfp.paymentservice.payments.web.dto.CaptureResponse;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
 import com.jonasfp.paymentservice.payments.web.dto.RefundRequest;
 import com.jonasfp.paymentservice.payments.web.dto.RefundResponse;
-import com.jonasfp.paymentservice.repository.CaptureRepository;
-import com.jonasfp.paymentservice.repository.IdempotencyKeyRepository;
-import com.jonasfp.paymentservice.repository.PaymentRepository;
-import com.jonasfp.paymentservice.repository.RefundRepository;
+import com.jonasfp.paymentservice.payments.infra.CaptureRepository;
+import com.jonasfp.paymentservice.payments.infra.IdempotencyKeyRepository;
+import com.jonasfp.paymentservice.payments.infra.PaymentRepository;
+import com.jonasfp.paymentservice.payments.infra.RefundRepository;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient

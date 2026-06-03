@@ -21,19 +21,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jonasfp.paymentservice.domain.PaymentStatus;
-import com.jonasfp.paymentservice.entity.IdempotencyKeyEntity;
-import com.jonasfp.paymentservice.entity.PaymentEntity;
-import com.jonasfp.paymentservice.entity.PaymentEventEntity;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyKey;
+import com.jonasfp.paymentservice.payments.domain.Payment;
+import com.jonasfp.paymentservice.payments.domain.PaymentEvent;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
-import com.jonasfp.paymentservice.repository.CaptureRepository;
-import com.jonasfp.paymentservice.repository.IdempotencyKeyRepository;
-import com.jonasfp.paymentservice.repository.JournalEntryRepository;
-import com.jonasfp.paymentservice.repository.JournalLineRepository;
-import com.jonasfp.paymentservice.repository.LedgerAccountRepository;
-import com.jonasfp.paymentservice.repository.PaymentEventRepository;
-import com.jonasfp.paymentservice.repository.PaymentRepository;
-import com.jonasfp.paymentservice.repository.RefundRepository;
+import com.jonasfp.paymentservice.payments.infra.CaptureRepository;
+import com.jonasfp.paymentservice.payments.infra.IdempotencyKeyRepository;
+import com.jonasfp.paymentservice.ledger.infra.JournalEntryRepository;
+import com.jonasfp.paymentservice.ledger.infra.JournalLineRepository;
+import com.jonasfp.paymentservice.ledger.infra.LedgerAccountRepository;
+import com.jonasfp.paymentservice.payments.infra.PaymentEventRepository;
+import com.jonasfp.paymentservice.payments.infra.PaymentRepository;
+import com.jonasfp.paymentservice.payments.infra.RefundRepository;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -78,23 +78,23 @@ class PaymentServiceTest {
             .findByCustomerIdAndIdempotencyKeyAndActionType(any(), any(),
                 any())).thenReturn(Optional.empty());
 
-        when(idempotencyKeyRepository.save(any(IdempotencyKeyEntity.class)))
+        when(idempotencyKeyRepository.save(any(IdempotencyKey.class)))
             .thenAnswer(invocation -> {
-                IdempotencyKeyEntity entity = invocation.getArgument(0);
+                IdempotencyKey entity = invocation.getArgument(0);
                 entity.setId(UUID.randomUUID());
                 return entity;
             });
 
-        when(paymentRepository.save(any(PaymentEntity.class)))
+        when(paymentRepository.save(any(Payment.class)))
             .thenAnswer(invocation -> {
-                PaymentEntity entity = invocation.getArgument(0);
+                Payment entity = invocation.getArgument(0);
                 entity.setId(UUID.randomUUID());
                 return entity;
             });
 
-        when(paymentEventRepository.save(any(PaymentEventEntity.class)))
+        when(paymentEventRepository.save(any(PaymentEvent.class)))
             .thenAnswer(invocation -> {
-                PaymentEventEntity entity = invocation.getArgument(0);
+                PaymentEvent entity = invocation.getArgument(0);
                 entity.setId(UUID.randomUUID());
                 return entity;
             });
@@ -109,9 +109,9 @@ class PaymentServiceTest {
         assertThat(response.status()).isEqualTo(PaymentStatus.AUTHORIZED);
 
         verify(idempotencyKeyRepository, times(2))
-            .save(any(IdempotencyKeyEntity.class));
-        verify(paymentRepository).save(any(PaymentEntity.class));
-        verify(paymentEventRepository).save(any(PaymentEventEntity.class));
+            .save(any(IdempotencyKey.class));
+        verify(paymentRepository).save(any(Payment.class));
+        verify(paymentEventRepository).save(any(PaymentEvent.class));
     }
 
     @Test
@@ -128,7 +128,7 @@ class PaymentServiceTest {
             "customer-1", request.invoiceId(), request.amountMinor(),
             request.currency(), PaymentStatus.AUTHORIZED, "proc_123");
 
-        IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
+        IdempotencyKey existingKey = new IdempotencyKey();
         existingKey.setCustomerId("customer-1");
         existingKey.setIdempotencyKey(idempotencyKey);
         existingKey.setActionType("AUTHORIZE");
@@ -163,7 +163,7 @@ class PaymentServiceTest {
             "USD");
         String requestHash = calculateHash(request);
 
-        IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
+        IdempotencyKey existingKey = new IdempotencyKey();
         existingKey.setCustomerId("customer-1");
         existingKey.setIdempotencyKey(idempotencyKey);
         existingKey.setActionType("AUTHORIZE");
@@ -190,7 +190,7 @@ class PaymentServiceTest {
             "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
             "USD");
 
-        IdempotencyKeyEntity existingKey = new IdempotencyKeyEntity();
+        IdempotencyKey existingKey = new IdempotencyKey();
         existingKey.setCustomerId("customer-1");
         existingKey.setIdempotencyKey(idempotencyKey);
         existingKey.setActionType("AUTHORIZE");

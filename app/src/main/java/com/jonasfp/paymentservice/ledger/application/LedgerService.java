@@ -8,13 +8,13 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.jonasfp.paymentservice.domain.JournalLineType;
-import com.jonasfp.paymentservice.entity.JournalLineEntity;
-import com.jonasfp.paymentservice.entity.LedgerAccountEntity;
+import com.jonasfp.paymentservice.ledger.domain.JournalLine;
+import com.jonasfp.paymentservice.ledger.domain.LedgerAccount;
 import com.jonasfp.paymentservice.ledger.web.dto.AccountBalanceResponse;
 import com.jonasfp.paymentservice.ledger.web.dto.TrialBalanceEntry;
 import com.jonasfp.paymentservice.ledger.web.dto.TrialBalanceResponse;
-import com.jonasfp.paymentservice.repository.JournalLineRepository;
-import com.jonasfp.paymentservice.repository.LedgerAccountRepository;
+import com.jonasfp.paymentservice.ledger.infra.JournalLineRepository;
+import com.jonasfp.paymentservice.ledger.infra.LedgerAccountRepository;
 
 @Service
 public class LedgerService {
@@ -31,18 +31,18 @@ public class LedgerService {
     @Transactional(readOnly = true)
     public AccountBalanceResponse getAccountBalance(UUID accountId,
         OffsetDateTime asOf) {
-        LedgerAccountEntity account =
+        LedgerAccount account =
             ledgerAccountRepository.findById(accountId)
                 .orElseThrow(() -> new IllegalArgumentException(
                     "Account not found: " + accountId));
 
-        List<JournalLineEntity> lines = journalLineRepository
+        List<JournalLine> lines = journalLineRepository
             .findByLedgerAccountIdAndCreatedAtBefore(accountId, asOf);
 
         BigDecimal balance = BigDecimal.ZERO;
         String currency = "USD";
 
-        for (JournalLineEntity line : lines) {
+        for (JournalLine line : lines) {
             currency = line.getCurrency();
             if (line.getDirection() == JournalLineType.DEBIT) {
                 balance = balance.add(line.getAmount());

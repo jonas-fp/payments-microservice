@@ -3,7 +3,7 @@ package com.jonasfp.paymentservice.reconciliation.domain;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import com.jonasfp.paymentservice.entity.BaseEntity;
+import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 
 @Entity
 @Table(name = "processor_statement_rows")

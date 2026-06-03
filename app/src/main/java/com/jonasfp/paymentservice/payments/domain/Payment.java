@@ -1,8 +1,9 @@
-package com.jonasfp.paymentservice.entity;
+package com.jonasfp.paymentservice.payments.domain;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 import com.jonasfp.paymentservice.domain.PaymentStatus;
+import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,7 +12,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "payments")
-public class PaymentEntity extends BaseEntity {
+public class Payment extends BaseEntity {
 
     @Column(name = "customer_id", nullable = false, length = 128)
     private String customerId;
@@ -38,7 +39,7 @@ public class PaymentEntity extends BaseEntity {
     @Column(name = "processor_payment_reference", length = 128)
     private String processorPaymentReference;
 
-    public PaymentEntity() {
+    public Payment() {
     }
 
     public String getCustomerId() {

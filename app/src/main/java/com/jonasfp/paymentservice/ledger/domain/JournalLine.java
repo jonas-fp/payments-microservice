@@ -1,8 +1,9 @@
-package com.jonasfp.paymentservice.entity;
+package com.jonasfp.paymentservice.ledger.domain;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 import com.jonasfp.paymentservice.domain.JournalLineType;
+import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,7 +12,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "journal_lines")
-public class JournalLineEntity extends BaseEntity {
+public class JournalLine extends BaseEntity {
 
     @Column(name = "journal_entry_id", nullable = false)
     private UUID journalEntryId;
@@ -29,7 +30,7 @@ public class JournalLineEntity extends BaseEntity {
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 
-    public JournalLineEntity() {
+    public JournalLine() {
     }
 
     public UUID getJournalEntryId() {
