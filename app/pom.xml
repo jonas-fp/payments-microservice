@@ -8,10 +8,10 @@
 		<version>3.5.10</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.payment-processing-system</groupId>
-	<artifactId>payment-processing-system</artifactId>
+	<groupId>com.jonasfp</groupId>
+	<artifactId>jonasfp</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>payment-processing-system</name>
+	<name>jonasfp</name>
 	<description>ledger-backed payment processing system (Stripe-Integrated)</description>
 	<url/>
 	<licenses>
