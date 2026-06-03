@@ -1,6 +1,6 @@
 spring:
   application:
-    name: payment-processing-system
+    name: paymentservice
 
   datasource:
     url: ${DB_URL}
