@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.jonasfp</groupId>
-	<artifactId>jonasfp</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>jonasfp</name>
-	<description>ledger-backed payment processing system (Stripe-Integrated)</description>
+	<artifactId>payments-microservice</artifactId>
+	<version>1.0.0</version>
+	<name>Payments Microservice</name>
+	<description>A mock internal payments microservice for a fictional SaaS company</description>
 	<url/>
 	<licenses>
 		<license/>
