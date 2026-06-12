@@ -110,6 +110,10 @@ public class ReconciliationService {
 
     @Transactional
     public UUID runReconciliation(LocalDate businessDate) {
+        // NOTE: The matching logic is intentionally a O(n^2) algorithm. I want
+        // to measure its performance before optimizing it to O(n) to see 
+        // the performance increase.
+
         // 1. Find the PENDING run
         ReconciliationRun run = runRepository
             .findByBusinessDateAndStatus(businessDate,
