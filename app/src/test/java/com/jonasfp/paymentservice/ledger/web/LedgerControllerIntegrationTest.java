@@ -1,6 +1,7 @@
 package com.jonasfp.paymentservice.ledger.web;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -73,7 +74,7 @@ class LedgerControllerIntegrationTest {
         // 2. Authorize a payment of 100.00
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
 
         PaymentResponse authResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
@@ -91,7 +92,7 @@ class LedgerControllerIntegrationTest {
         // 3. Capture the payment
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)
@@ -121,7 +122,7 @@ class LedgerControllerIntegrationTest {
         // 1. Authorize and Capture a payment of 100.00
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
 
         PaymentResponse authResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
@@ -138,7 +139,7 @@ class LedgerControllerIntegrationTest {
 
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)

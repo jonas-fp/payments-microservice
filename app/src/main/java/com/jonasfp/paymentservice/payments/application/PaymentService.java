@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jonasfp.paymentservice.domain.CurrencyCode;
 import com.jonasfp.paymentservice.domain.JournalLineType;
 import com.jonasfp.paymentservice.domain.Money;
 import com.jonasfp.paymentservice.domain.PaymentEventType;
@@ -122,10 +121,12 @@ public class PaymentService {
         String processorReference = "proc_" + idempotencyKey.substring(0, 8);
 
         // 4. Create Payment
+        Money moneyToAuthorize =
+            Money.fromMinor(request.minorAmount(), request.currency());
         Payment payment = new Payment();
         payment.setCustomerId(request.customerId());
         payment.setInvoiceId(request.invoiceId());
-        payment.setAuthorizedAmount(request.amountMinor().movePointLeft(2));
+        payment.setAuthorizedAmount(moneyToAuthorize.majorAmount());
         payment.setCapturedAmount(BigDecimal.ZERO);
         payment.setRefundedAmount(BigDecimal.ZERO);
         payment.setCurrency(request.currency());
@@ -144,7 +145,7 @@ public class PaymentService {
         // 6. Complete Idempotency Key
         PaymentResponse response = new PaymentResponse(payment.getId(),
             payment.getCustomerId(), payment.getInvoiceId(),
-            payment.getAuthorizedAmount().movePointRight(2),
+            moneyToAuthorize.toMinor(),
             payment.getCurrency(), payment.getStatus(),
             payment.getProcessorPaymentReference());
 
@@ -209,10 +210,12 @@ public class PaymentService {
                 "Payment is not in AUTHORIZED state");
         }
 
-        BigDecimal amountToCapture = request.amountMinor().movePointLeft(2);
-        if (amountToCapture.compareTo(payment.getAuthorizedAmount()) != 0) {
+        Money moneyToCapture =
+            Money.fromMinor(request.minorAmount(), request.currency());
+        if (moneyToCapture.majorAmount()
+            .compareTo(payment.getAuthorizedAmount()) != 0) {
             throw new IllegalArgumentException(
-                "Only full captures are currently supported");
+                "Capture amount must equal authorized amount");
         }
 
         // 4. Process the capture (Mocking processor call)
@@ -231,7 +234,7 @@ public class PaymentService {
         Capture capture = new Capture();
         capture.setPaymentId(payment.getId());
         capture.setPaymentEventId(event.getId());
-        capture.setAmount(amountToCapture);
+        capture.setAmount(moneyToCapture.majorAmount());
         capture.setCurrency(payment.getCurrency());
         capture.setProcessorCaptureReference(processorCaptureReference);
         capture = captureRepository.save(capture);
@@ -252,16 +255,13 @@ public class PaymentService {
             .orElseThrow(() -> new IllegalStateException(
                 "Deferred Revenue account not found"));
 
-        Money money = new Money(amountToCapture,
-            new CurrencyCode(payment.getCurrency()));
-
         // DEBIT Cash Clearing
         JournalLine debitLine = new JournalLine();
         debitLine.setJournalEntryId(journalEntry.getId());
         debitLine.setLedgerAccountId(cashClearing.getId());
         debitLine.setDirection(JournalLineType.DEBIT);
-        debitLine.setAmount(money.amountMinor());
-        debitLine.setCurrency(money.currency().value());
+        debitLine.setAmount(moneyToCapture.majorAmount());
+        debitLine.setCurrency(moneyToCapture.currency().value());
         journalLineRepository.save(debitLine);
 
         // CREDIT Deferred Revenue
@@ -269,13 +269,13 @@ public class PaymentService {
         creditLine.setJournalEntryId(journalEntry.getId());
         creditLine.setLedgerAccountId(deferredRevenue.getId());
         creditLine.setDirection(JournalLineType.CREDIT);
-        creditLine.setAmount(money.amountMinor());
-        creditLine.setCurrency(money.currency().value());
+        creditLine.setAmount(moneyToCapture.majorAmount());
+        creditLine.setCurrency(moneyToCapture.currency().value());
         journalLineRepository.save(creditLine);
 
         // 8. Complete Idempotency Key
         CaptureResponse response = new CaptureResponse(capture.getId(),
-            payment.getId(), capture.getAmount().movePointRight(2),
+            payment.getId(), moneyToCapture.toMinor(),
             capture.getCurrency(), PaymentStatus.CAPTURED, // Status will be
                                                            // updated by DB
                                                            // trigger
@@ -342,10 +342,11 @@ public class PaymentService {
                 "Payment is not in a refundable state");
         }
 
-        BigDecimal amountToRefund = request.amountMinor().movePointLeft(2);
+        Money moneyToRefund =
+            Money.fromMinor(request.minorAmount(), request.currency());
         BigDecimal availableToRefund =
             payment.getCapturedAmount().subtract(payment.getRefundedAmount());
-        if (amountToRefund.compareTo(availableToRefund) > 0) {
+        if (moneyToRefund.majorAmount().compareTo(availableToRefund) > 0) {
             throw new IllegalArgumentException(
                 "Refund amount exceeds available captured amount");
         }
@@ -366,7 +367,7 @@ public class PaymentService {
         Refund refund = new Refund();
         refund.setPaymentId(payment.getId());
         refund.setPaymentEventId(event.getId());
-        refund.setAmount(amountToRefund);
+        refund.setAmount(moneyToRefund.majorAmount());
         refund.setCurrency(payment.getCurrency());
         refund.setProcessorRefundReference(processorRefundReference);
         refund = refundRepository.save(refund);
@@ -388,14 +389,14 @@ public class PaymentService {
                     "Deferred Revenue account not found"));
 
         Money money =
-            new Money(amountToRefund, new CurrencyCode(payment.getCurrency()));
+            Money.of(moneyToRefund.majorAmount(), payment.getCurrency());
 
         // DEBIT Deferred Revenue (Liability decreases)
         JournalLine debitLine = new JournalLine();
         debitLine.setJournalEntryId(journalEntry.getId());
         debitLine.setLedgerAccountId(deferredRevenue.getId());
         debitLine.setDirection(JournalLineType.DEBIT);
-        debitLine.setAmount(money.amountMinor());
+        debitLine.setAmount(money.majorAmount());
         debitLine.setCurrency(money.currency().value());
         journalLineRepository.save(debitLine);
 
@@ -404,7 +405,7 @@ public class PaymentService {
         creditLine.setJournalEntryId(journalEntry.getId());
         creditLine.setLedgerAccountId(cashClearing.getId());
         creditLine.setDirection(JournalLineType.CREDIT);
-        creditLine.setAmount(money.amountMinor());
+        creditLine.setAmount(money.majorAmount());
         creditLine.setCurrency(money.currency().value());
         journalLineRepository.save(creditLine);
 
@@ -412,10 +413,11 @@ public class PaymentService {
         RefundResponse response = new RefundResponse(
             refund.getId(),
             payment.getId(),
-            refund.getAmount().movePointRight(2),
+            moneyToRefund.toMinor(),
             refund.getCurrency(),
             payment.getCapturedAmount()
-                .subtract(payment.getRefundedAmount().add(amountToRefund))
+                .subtract(payment.getRefundedAmount()
+                    .add(moneyToRefund.majorAmount()))
                 .compareTo(BigDecimal.ZERO) == 0
                     ? PaymentStatus.FULLY_REFUNDED
                     : PaymentStatus.PARTIALLY_REFUNDED,

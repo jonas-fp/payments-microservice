@@ -8,7 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -71,7 +71,7 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
 
         when(idempotencyKeyRepository
@@ -105,7 +105,7 @@ class PaymentServiceTest {
 
         // Then
         assertThat(response.customerId()).isEqualTo("customer-1");
-        assertThat(response.amountMinor()).isEqualTo(new BigDecimal("10000"));
+        assertThat(response.minorAmount()).isEqualTo(new BigInteger("10000"));
         assertThat(response.status()).isEqualTo(PaymentStatus.AUTHORIZED);
 
         verify(idempotencyKeyRepository, times(2))
@@ -120,12 +120,12 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
         String requestHash = calculateHash(request);
 
         PaymentResponse cachedResponse = new PaymentResponse(UUID.randomUUID(),
-            "customer-1", request.invoiceId(), request.amountMinor(),
+            "customer-1", request.invoiceId(), request.minorAmount(),
             request.currency(), PaymentStatus.AUTHORIZED, "proc_123");
 
         IdempotencyKey existingKey = new IdempotencyKey();
@@ -148,7 +148,7 @@ class PaymentServiceTest {
         // Then
         assertThat(response).usingRecursiveComparison()
             .withEqualsForType((b1, b2) -> b1.compareTo(b2) == 0,
-                BigDecimal.class)
+                BigInteger.class)
             .isEqualTo(cachedResponse);
         verify(paymentRepository, never()).save(any());
         verify(paymentEventRepository, never()).save(any());
@@ -159,7 +159,7 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
         String requestHash = calculateHash(request);
 
@@ -187,7 +187,7 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
 
         IdempotencyKey existingKey = new IdempotencyKey();
