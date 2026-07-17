@@ -7,6 +7,9 @@ import java.util.Objects;
 public record Money(BigDecimal majorAmount, CurrencyCode currency) {
 
     public Money {
+        majorAmount = Objects.requireNonNull(majorAmount, 
+            "majorAmount must not be null");
+        
         if (majorAmount.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException(
                 "majorAmount must be non-negative");
@@ -25,6 +28,7 @@ public record Money(BigDecimal majorAmount, CurrencyCode currency) {
 
         // NOTE: This only works for currencies with two decimal places
         BigDecimal majorAmount = new BigDecimal(minorAmount).movePointLeft(2);
+        
         return new Money(majorAmount, CurrencyCode.of(currency));
     }
 
