@@ -10,11 +10,6 @@ public record Money(BigDecimal majorAmount, CurrencyCode currency) {
         majorAmount = Objects.requireNonNull(majorAmount, 
             "majorAmount must not be null");
         
-        if (majorAmount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException(
-                "majorAmount must be non-negative");
-        }
-
         currency = Objects.requireNonNull(currency,
             "currency must not be null");
     }
@@ -40,12 +35,8 @@ public record Money(BigDecimal majorAmount, CurrencyCode currency) {
 
     public Money minus(Money other) {
         requireSameCurrency(other);
-        BigDecimal result = majorAmount.subtract(other.majorAmount);
-        if (result.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException(
-                "resulting majorAmount must be non-negative");
-        }
-        return new Money(result, currency);
+        return new Money(majorAmount.subtract(other.majorAmount),
+            currency);
     }
 
     public boolean isZero() {

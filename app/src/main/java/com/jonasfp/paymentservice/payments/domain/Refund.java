@@ -2,6 +2,7 @@ package com.jonasfp.paymentservice.payments.domain;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import com.jonasfp.paymentservice.domain.Money;
 import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -28,6 +29,15 @@ public class Refund extends BaseEntity {
     private String processorRefundReference;
 
     public Refund() {}
+
+    public Money getMoney() {
+        return Money.of(amount, currency);
+    }
+
+    public void setMoney(Money money) {
+        this.amount = money.majorAmount();
+        this.currency = money.currency().value();
+    }
 
     public UUID getPaymentId() {
         return paymentId;

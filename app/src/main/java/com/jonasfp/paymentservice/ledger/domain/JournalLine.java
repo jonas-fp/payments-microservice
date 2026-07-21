@@ -3,6 +3,7 @@ package com.jonasfp.paymentservice.ledger.domain;
 import java.math.BigDecimal;
 import java.util.UUID;
 import com.jonasfp.paymentservice.domain.JournalLineType;
+import com.jonasfp.paymentservice.domain.Money;
 import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -31,6 +32,15 @@ public class JournalLine extends BaseEntity {
     private String currency;
 
     public JournalLine() {
+    }
+
+    public Money getMoney() {
+        return Money.of(amount, currency);
+    }
+
+    public void setMoney(Money money) {
+        this.amount = money.majorAmount();
+        this.currency = money.currency().value();
     }
 
     public UUID getJournalEntryId() {

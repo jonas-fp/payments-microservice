@@ -16,6 +16,7 @@ import com.jonasfp.paymentservice.reconciliation.web.dto.ProcessorStatementCsvRo
 import com.jonasfp.paymentservice.reconciliation.web.dto.ReconciliationRunSummary;
 import com.jonasfp.paymentservice.payments.infra.CaptureRepository;
 import com.jonasfp.paymentservice.payments.infra.RefundRepository;
+import com.jonasfp.paymentservice.domain.Money;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -157,14 +158,13 @@ public class ReconciliationService {
                     if (captureOpt.isPresent()) {
                         Capture capture = captureOpt.get();
                         matchedCaptureIds.add(capture.getId());
-                        if (capture.getAmount()
-                            .compareTo(row.getAmount()) != 0) {
+                        if (!capture.getMoney().equals(row.getMoney())) {
                             breaks.add(createAmountMismatchBreak(run, row,
                                 capture.getPaymentId(),
                                 String.format(
                                     "Amount mismatch: Internal=%s, " +
                                         "Processor=%s",
-                                    capture.getAmount(), row.getAmount())));
+                                    capture.getMoney(), row.getMoney())));
                         }
                     } else {
                         breaks.add(createMissingInternalBreak(run, row,
@@ -181,14 +181,13 @@ public class ReconciliationService {
                     if (refundOpt.isPresent()) {
                         Refund refund = refundOpt.get();
                         matchedRefundIds.add(refund.getId());
-                        if (refund.getAmount()
-                            .compareTo(row.getAmount()) != 0) {
+                        if (!refund.getMoney().equals(row.getMoney())) {
                             breaks.add(createAmountMismatchBreak(run, row,
                                 refund.getPaymentId(),
                                 String.format(
                                     "Amount mismatch: Internal=%s, " +
                                         "Processor=%s",
-                                    refund.getAmount(), row.getAmount())));
+                                    refund.getMoney(), row.getMoney())));
                         }
                     } else {
                         breaks.add(createMissingInternalBreak(run, row,
@@ -273,8 +272,7 @@ public class ReconciliationService {
         entity.setBusinessDate(LocalDate.parse(csv.businessDate()));
         entity.setRecordType(csv.recordType());
         entity.setProcessorReference(csv.processorReference());
-        entity.setAmount(csv.amount());
-        entity.setCurrency(csv.currency());
+        entity.setMoney(Money.of(csv.amount(), csv.currency()));
         return entity;
     }
 }
