@@ -1,6 +1,10 @@
 package com.jonasfp.paymentservice.reconciliation.domain;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import com.jonasfp.paymentservice.infra.persistence.BaseEntity;

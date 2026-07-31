@@ -8,7 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,7 +21,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jonasfp.paymentservice.domain.PaymentStatus;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyActionType;
 import com.jonasfp.paymentservice.payments.domain.IdempotencyKey;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyResponseStatus;
 import com.jonasfp.paymentservice.payments.domain.Payment;
 import com.jonasfp.paymentservice.payments.domain.PaymentEvent;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
@@ -71,7 +73,7 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
 
         when(idempotencyKeyRepository
@@ -105,7 +107,7 @@ class PaymentServiceTest {
 
         // Then
         assertThat(response.customerId()).isEqualTo("customer-1");
-        assertThat(response.amountMinor()).isEqualTo(new BigDecimal("10000"));
+        assertThat(response.minorAmount()).isEqualTo(new BigInteger("10000"));
         assertThat(response.status()).isEqualTo(PaymentStatus.AUTHORIZED);
 
         verify(idempotencyKeyRepository, times(2))
@@ -120,25 +122,25 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
         String requestHash = calculateHash(request);
 
         PaymentResponse cachedResponse = new PaymentResponse(UUID.randomUUID(),
-            "customer-1", request.invoiceId(), request.amountMinor(),
+            "customer-1", request.invoiceId(), request.minorAmount(),
             request.currency(), PaymentStatus.AUTHORIZED, "proc_123");
 
         IdempotencyKey existingKey = new IdempotencyKey();
         existingKey.setCustomerId("customer-1");
         existingKey.setIdempotencyKey(idempotencyKey);
-        existingKey.setActionType("AUTHORIZE");
+        existingKey.setActionType(IdempotencyActionType.AUTHORIZE);
         existingKey.setRequestHash(requestHash);
-        existingKey.setResponseStatus("COMPLETED");
+        existingKey.setResponseStatus(IdempotencyResponseStatus.COMPLETED);
         existingKey.setResponseBody(objectMapper.valueToTree(cachedResponse));
 
         when(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
-                idempotencyKey, "AUTHORIZE"))
+                idempotencyKey, IdempotencyActionType.AUTHORIZE))
                     .thenReturn(Optional.of(existingKey));
 
         // When
@@ -148,7 +150,7 @@ class PaymentServiceTest {
         // Then
         assertThat(response).usingRecursiveComparison()
             .withEqualsForType((b1, b2) -> b1.compareTo(b2) == 0,
-                BigDecimal.class)
+                BigInteger.class)
             .isEqualTo(cachedResponse);
         verify(paymentRepository, never()).save(any());
         verify(paymentEventRepository, never()).save(any());
@@ -159,20 +161,20 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
         String requestHash = calculateHash(request);
 
         IdempotencyKey existingKey = new IdempotencyKey();
         existingKey.setCustomerId("customer-1");
         existingKey.setIdempotencyKey(idempotencyKey);
-        existingKey.setActionType("AUTHORIZE");
+        existingKey.setActionType(IdempotencyActionType.AUTHORIZE);
         existingKey.setRequestHash(requestHash);
-        existingKey.setResponseStatus("STARTED");
+        existingKey.setResponseStatus(IdempotencyResponseStatus.STARTED);
 
         when(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
-                idempotencyKey, "AUTHORIZE"))
+                idempotencyKey, IdempotencyActionType.AUTHORIZE))
                     .thenReturn(Optional.of(existingKey));
 
         // When / Then
@@ -187,18 +189,18 @@ class PaymentServiceTest {
         // Given
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
 
         IdempotencyKey existingKey = new IdempotencyKey();
         existingKey.setCustomerId("customer-1");
         existingKey.setIdempotencyKey(idempotencyKey);
-        existingKey.setActionType("AUTHORIZE");
+        existingKey.setActionType(IdempotencyActionType.AUTHORIZE);
         existingKey.setRequestHash("different-hash");
 
         when(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
-                idempotencyKey, "AUTHORIZE"))
+                idempotencyKey, IdempotencyActionType.AUTHORIZE))
                     .thenReturn(Optional.of(existingKey));
 
         // When / Then

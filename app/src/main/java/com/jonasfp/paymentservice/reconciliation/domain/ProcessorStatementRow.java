@@ -1,8 +1,14 @@
 package com.jonasfp.paymentservice.reconciliation.domain;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Column;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import com.jonasfp.paymentservice.domain.Money;
 import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 
 @Entity
@@ -29,6 +35,15 @@ public class ProcessorStatementRow extends BaseEntity {
     private String currency;
 
     public ProcessorStatementRow() {}
+
+    public Money getMoney() {
+        return Money.of(amount, currency);
+    }
+
+    public void setMoney(Money money) {
+        this.amount = money.majorAmount();
+        this.currency = money.currency().value();
+    }
 
     public ReconciliationRun getReconciliationRun() {
         return reconciliationRun;

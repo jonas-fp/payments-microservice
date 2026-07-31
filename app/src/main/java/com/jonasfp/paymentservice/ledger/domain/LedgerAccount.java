@@ -3,6 +3,8 @@ package com.jonasfp.paymentservice.ledger.domain;
 import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 @Entity
@@ -15,11 +17,11 @@ public class LedgerAccount extends BaseEntity {
     @Column(name = "account_name", nullable = false, length = 128)
     private String accountName;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "account_type", nullable = false, length = 32)
-    private String accountType;
+    private LedgerAccountType accountType;
 
-    public LedgerAccount() {
-    }
+    public LedgerAccount() {}
 
     public String getAccountCode() {
         return accountCode;
@@ -37,11 +39,11 @@ public class LedgerAccount extends BaseEntity {
         this.accountName = accountName;
     }
 
-    public String getAccountType() {
+    public LedgerAccountType getAccountType() {
         return accountType;
     }
 
-    public void setAccountType(String accountType) {
+    public void setAccountType(LedgerAccountType accountType) {
         this.accountType = accountType;
     }
 }

@@ -23,6 +23,8 @@ spring:
           '[batch_size]': 50
           '[order_inserts]': true
           '[order_updates]': true
+          '[time_zone]': UTC
+
 
   flyway:
     enabled: true

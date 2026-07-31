@@ -16,12 +16,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
+import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationBreakType;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationRunStatus;
 import com.jonasfp.paymentservice.reconciliation.infra.ProcessorStatementRowRepository;
 import com.jonasfp.paymentservice.reconciliation.infra.ReconciliationBreakRepository;
 import com.jonasfp.paymentservice.reconciliation.infra.ReconciliationRunRepository;
 import com.jonasfp.paymentservice.reconciliation.web.dto.ReconciliationRunSummary;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -126,19 +128,19 @@ class ReconciliationControllerIntegrationTest {
 
     @Test
     void runReconciliation_withoutBreaks_matchesAllRecords() {
-        LocalDate businessDate = LocalDate.now();
+        LocalDate businessDate = LocalDate.now(java.time.ZoneOffset.UTC);
         String idempotencyKey = UUID.randomUUID().toString();
 
         // 1. Create internal record (Authorize + Capture)
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "cust-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "cust-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
         webTestClient.post().uri("/v1/payments/authorize")
             .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON).bodyValue(authRequest)
             .exchange().expectStatus().isCreated();
 
         CapturePaymentRequest capRequest =
-            new CapturePaymentRequest("cust-1", new BigDecimal("10000"), "USD");
+            new CapturePaymentRequest("cust-1", new BigInteger("10000"), "USD");
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", getPaymentId(idempotencyKey))
             .header("Idempotency-Key", idempotencyKey)
@@ -182,17 +184,17 @@ class ReconciliationControllerIntegrationTest {
 
     @Test
     void runReconciliation_withBreaks_identifiesAllDiscrepancies() {
-        LocalDate businessDate = LocalDate.now();
+        LocalDate businessDate = LocalDate.now(java.time.ZoneOffset.UTC);
 
         // 1. Setup internal records
         // Payment A: Amount mismatch (Internal 100, Processor 90)
         String keyA = UUID.randomUUID().toString();
-        createCapture(keyA, new BigDecimal("10000"));
+        createCapture(keyA, new BigInteger("10000"));
 
         // Payment B: Missing from processor (Internal exists, Processor
         // missing)
         String keyB = UUID.randomUUID().toString();
-        createCapture(keyB, new BigDecimal("5000"));
+        createCapture(keyB, new BigInteger("5000"));
 
         // 2. Import processor statement
         // Row A: Amount mismatch
@@ -227,24 +229,24 @@ class ReconciliationControllerIntegrationTest {
                 assertThat(summary.status())
                     .isEqualTo(ReconciliationRunStatus.SUCCEEDED);
                 assertThat(summary.breakSummary())
-                    .containsEntry("AMOUNT_MISMATCH", 1L);
+                    .containsEntry(ReconciliationBreakType.AMOUNT_MISMATCH, 1L);
                 assertThat(summary.breakSummary())
-                    .containsEntry("MISSING_INTERNAL_RECORD", 1L);
+                    .containsEntry(ReconciliationBreakType.MISSING_INTERNAL_RECORD, 1L);
                 assertThat(summary.breakSummary())
-                    .containsEntry("MISSING_PROCESSOR_RECORD", 1L);
+                    .containsEntry(ReconciliationBreakType.MISSING_PROCESSOR_RECORD, 1L);
             });
     }
 
-    private void createCapture(String idempotencyKey, BigDecimal amountMinor) {
+    private void createCapture(String idempotencyKey, BigInteger minorAmount) {
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "cust", UUID.randomUUID(), amountMinor, "USD");
+            "cust", UUID.randomUUID(), minorAmount, "USD");
         webTestClient.post().uri("/v1/payments/authorize")
             .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON).bodyValue(authRequest)
             .exchange().expectStatus().isCreated();
 
         CapturePaymentRequest capRequest =
-            new CapturePaymentRequest("cust", amountMinor, "USD");
+            new CapturePaymentRequest("cust", minorAmount, "USD");
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", getPaymentId(idempotencyKey))
             .header("Idempotency-Key", idempotencyKey)

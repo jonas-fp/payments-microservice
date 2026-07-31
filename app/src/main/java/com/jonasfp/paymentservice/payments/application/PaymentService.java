@@ -13,17 +13,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jonasfp.paymentservice.domain.CurrencyCode;
 import com.jonasfp.paymentservice.domain.JournalLineType;
 import com.jonasfp.paymentservice.domain.Money;
 import com.jonasfp.paymentservice.domain.PaymentEventType;
 import com.jonasfp.paymentservice.domain.PaymentStatus;
 import com.jonasfp.paymentservice.domain.TransactionType;
-import com.jonasfp.paymentservice.payments.domain.Capture;
-import com.jonasfp.paymentservice.payments.domain.IdempotencyKey;
 import com.jonasfp.paymentservice.ledger.domain.JournalEntry;
 import com.jonasfp.paymentservice.ledger.domain.JournalLine;
 import com.jonasfp.paymentservice.ledger.domain.LedgerAccount;
+import com.jonasfp.paymentservice.ledger.domain.LedgerAccountCodes;
+import com.jonasfp.paymentservice.payments.domain.Capture;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyActionType;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyKey;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyResponseStatus;
 import com.jonasfp.paymentservice.payments.domain.Payment;
 import com.jonasfp.paymentservice.payments.domain.PaymentEvent;
 import com.jonasfp.paymentservice.payments.domain.Refund;
@@ -78,7 +80,7 @@ public class PaymentService {
     @Transactional
     public PaymentResponse authorize(String idempotencyKey,
         AuthorizePaymentRequest request) {
-        String actionType = "AUTHORIZE";
+        IdempotencyActionType actionType = IdempotencyActionType.AUTHORIZE;
         String requestHash = calculateHash(request);
 
         // 1. Check for existing idempotency key
@@ -96,7 +98,8 @@ public class PaymentService {
                     "Idempotency key reuse with different request body");
             }
 
-            if ("COMPLETED".equals(key.getResponseStatus())) {
+            if (IdempotencyResponseStatus.COMPLETED
+                .equals(key.getResponseStatus())) {
                 try {
                     return objectMapper.treeToValue(key.getResponseBody(),
                         PaymentResponse.class);
@@ -104,7 +107,8 @@ public class PaymentService {
                     throw new RuntimeException(
                         "Failed to deserialize cached response", e);
                 }
-            } else if ("STARTED".equals(key.getResponseStatus())) {
+            } else if (IdempotencyResponseStatus.STARTED
+                .equals(key.getResponseStatus())) {
                 throw new IllegalStateException("Request already in progress");
             }
         }
@@ -115,17 +119,19 @@ public class PaymentService {
         keyEntity.setIdempotencyKey(idempotencyKey);
         keyEntity.setActionType(actionType);
         keyEntity.setRequestHash(requestHash);
-        keyEntity.setResponseStatus("STARTED");
+        keyEntity.setResponseStatus(IdempotencyResponseStatus.STARTED);
         keyEntity = idempotencyKeyRepository.save(keyEntity);
 
         // 3. Process the authorization (Mocking processor call)
         String processorReference = "proc_" + idempotencyKey.substring(0, 8);
 
         // 4. Create Payment
+        Money moneyToAuthorize =
+            Money.fromMinor(request.minorAmount(), request.currency());
         Payment payment = new Payment();
         payment.setCustomerId(request.customerId());
         payment.setInvoiceId(request.invoiceId());
-        payment.setAuthorizedAmount(request.amountMinor().movePointLeft(2));
+        payment.setAuthorizedAmount(moneyToAuthorize.majorAmount());
         payment.setCapturedAmount(BigDecimal.ZERO);
         payment.setRefundedAmount(BigDecimal.ZERO);
         payment.setCurrency(request.currency());
@@ -144,11 +150,11 @@ public class PaymentService {
         // 6. Complete Idempotency Key
         PaymentResponse response = new PaymentResponse(payment.getId(),
             payment.getCustomerId(), payment.getInvoiceId(),
-            payment.getAuthorizedAmount().movePointRight(2),
+            moneyToAuthorize.toMinor(),
             payment.getCurrency(), payment.getStatus(),
             payment.getProcessorPaymentReference());
 
-        keyEntity.setResponseStatus("COMPLETED");
+        keyEntity.setResponseStatus(IdempotencyResponseStatus.COMPLETED);
         keyEntity.setResourceId(payment.getId());
         keyEntity.setEventId(event.getId());
         keyEntity.setResponseCode(201);
@@ -161,7 +167,7 @@ public class PaymentService {
     @Transactional
     public CaptureResponse capture(UUID paymentId, String idempotencyKey,
         CapturePaymentRequest request) {
-        String actionType = "CAPTURE";
+        IdempotencyActionType actionType = IdempotencyActionType.CAPTURE;
         String requestHash = calculateHash(request);
 
         // 1. Check for existing idempotency key
@@ -177,7 +183,8 @@ public class PaymentService {
                     "Idempotency key reuse with different request body");
             }
 
-            if ("COMPLETED".equals(key.getResponseStatus())) {
+            if (IdempotencyResponseStatus.COMPLETED
+                .equals(key.getResponseStatus())) {
                 try {
                     return objectMapper.treeToValue(key.getResponseBody(),
                         CaptureResponse.class);
@@ -185,7 +192,8 @@ public class PaymentService {
                     throw new RuntimeException(
                         "Failed to deserialize cached response", e);
                 }
-            } else if ("STARTED".equals(key.getResponseStatus())) {
+            } else if (IdempotencyResponseStatus.STARTED
+                .equals(key.getResponseStatus())) {
                 throw new IllegalStateException("Request already in progress");
             }
         }
@@ -196,7 +204,7 @@ public class PaymentService {
         keyEntity.setIdempotencyKey(idempotencyKey);
         keyEntity.setActionType(actionType);
         keyEntity.setRequestHash(requestHash);
-        keyEntity.setResponseStatus("STARTED");
+        keyEntity.setResponseStatus(IdempotencyResponseStatus.STARTED);
         keyEntity = idempotencyKeyRepository.save(keyEntity);
 
         // 3. Validation
@@ -209,10 +217,12 @@ public class PaymentService {
                 "Payment is not in AUTHORIZED state");
         }
 
-        BigDecimal amountToCapture = request.amountMinor().movePointLeft(2);
-        if (amountToCapture.compareTo(payment.getAuthorizedAmount()) != 0) {
+        Money moneyToCapture =
+            Money.fromMinor(request.minorAmount(), request.currency());
+        if (moneyToCapture.majorAmount()
+            .compareTo(payment.getAuthorizedAmount()) != 0) {
             throw new IllegalArgumentException(
-                "Only full captures are currently supported");
+                "Capture amount must equal authorized amount");
         }
 
         // 4. Process the capture (Mocking processor call)
@@ -231,7 +241,7 @@ public class PaymentService {
         Capture capture = new Capture();
         capture.setPaymentId(payment.getId());
         capture.setPaymentEventId(event.getId());
-        capture.setAmount(amountToCapture);
+        capture.setAmount(moneyToCapture.majorAmount());
         capture.setCurrency(payment.getCurrency());
         capture.setProcessorCaptureReference(processorCaptureReference);
         capture = captureRepository.save(capture);
@@ -244,24 +254,21 @@ public class PaymentService {
         journalEntry = journalEntryRepository.save(journalEntry);
 
         LedgerAccount cashClearing = ledgerAccountRepository
-            .findByAccountCode("10001")
+            .findByAccountCode(LedgerAccountCodes.CASH_CLEARING)
             .orElseThrow(() -> new IllegalStateException(
                 "Cash Clearing account not found"));
         LedgerAccount deferredRevenue = ledgerAccountRepository
-            .findByAccountCode("20002")
+            .findByAccountCode(LedgerAccountCodes.DEFERRED_REVENUE)
             .orElseThrow(() -> new IllegalStateException(
                 "Deferred Revenue account not found"));
-
-        Money money = new Money(amountToCapture,
-            new CurrencyCode(payment.getCurrency()));
 
         // DEBIT Cash Clearing
         JournalLine debitLine = new JournalLine();
         debitLine.setJournalEntryId(journalEntry.getId());
         debitLine.setLedgerAccountId(cashClearing.getId());
         debitLine.setDirection(JournalLineType.DEBIT);
-        debitLine.setAmount(money.amountMinor());
-        debitLine.setCurrency(money.currency().value());
+        debitLine.setAmount(moneyToCapture.majorAmount());
+        debitLine.setCurrency(moneyToCapture.currency().value());
         journalLineRepository.save(debitLine);
 
         // CREDIT Deferred Revenue
@@ -269,19 +276,19 @@ public class PaymentService {
         creditLine.setJournalEntryId(journalEntry.getId());
         creditLine.setLedgerAccountId(deferredRevenue.getId());
         creditLine.setDirection(JournalLineType.CREDIT);
-        creditLine.setAmount(money.amountMinor());
-        creditLine.setCurrency(money.currency().value());
+        creditLine.setAmount(moneyToCapture.majorAmount());
+        creditLine.setCurrency(moneyToCapture.currency().value());
         journalLineRepository.save(creditLine);
 
         // 8. Complete Idempotency Key
         CaptureResponse response = new CaptureResponse(capture.getId(),
-            payment.getId(), capture.getAmount().movePointRight(2),
+            payment.getId(), moneyToCapture.toMinor(),
             capture.getCurrency(), PaymentStatus.CAPTURED, // Status will be
                                                            // updated by DB
                                                            // trigger
             capture.getProcessorCaptureReference());
 
-        keyEntity.setResponseStatus("COMPLETED");
+        keyEntity.setResponseStatus(IdempotencyResponseStatus.COMPLETED);
         keyEntity.setResourceId(capture.getId());
         keyEntity.setEventId(event.getId());
         keyEntity.setResponseCode(201);
@@ -294,7 +301,7 @@ public class PaymentService {
     @Transactional
     public RefundResponse refund(UUID paymentId, String idempotencyKey,
         RefundRequest request) {
-        String actionType = "REFUND";
+        IdempotencyActionType actionType = IdempotencyActionType.REFUND;
         String requestHash = calculateHash(request);
 
         // 1. Check for existing idempotency key
@@ -310,7 +317,8 @@ public class PaymentService {
                     "Idempotency key reuse with different request body");
             }
 
-            if ("COMPLETED".equals(key.getResponseStatus())) {
+            if (IdempotencyResponseStatus.COMPLETED
+                .equals(key.getResponseStatus())) {
                 try {
                     return objectMapper.treeToValue(key.getResponseBody(),
                         RefundResponse.class);
@@ -318,7 +326,8 @@ public class PaymentService {
                     throw new RuntimeException(
                         "Failed to deserialize cached response", e);
                 }
-            } else if ("STARTED".equals(key.getResponseStatus())) {
+            } else if (IdempotencyResponseStatus.STARTED
+                .equals(key.getResponseStatus())) {
                 throw new IllegalStateException("Request already in progress");
             }
         }
@@ -329,7 +338,7 @@ public class PaymentService {
         keyEntity.setIdempotencyKey(idempotencyKey);
         keyEntity.setActionType(actionType);
         keyEntity.setRequestHash(requestHash);
-        keyEntity.setResponseStatus("STARTED");
+        keyEntity.setResponseStatus(IdempotencyResponseStatus.STARTED);
         keyEntity = idempotencyKeyRepository.save(keyEntity);
 
         // 3. Validation
@@ -342,10 +351,11 @@ public class PaymentService {
                 "Payment is not in a refundable state");
         }
 
-        BigDecimal amountToRefund = request.amountMinor().movePointLeft(2);
+        Money moneyToRefund =
+            Money.fromMinor(request.minorAmount(), request.currency());
         BigDecimal availableToRefund =
             payment.getCapturedAmount().subtract(payment.getRefundedAmount());
-        if (amountToRefund.compareTo(availableToRefund) > 0) {
+        if (moneyToRefund.majorAmount().compareTo(availableToRefund) > 0) {
             throw new IllegalArgumentException(
                 "Refund amount exceeds available captured amount");
         }
@@ -366,7 +376,7 @@ public class PaymentService {
         Refund refund = new Refund();
         refund.setPaymentId(payment.getId());
         refund.setPaymentEventId(event.getId());
-        refund.setAmount(amountToRefund);
+        refund.setAmount(moneyToRefund.majorAmount());
         refund.setCurrency(payment.getCurrency());
         refund.setProcessorRefundReference(processorRefundReference);
         refund = refundRepository.save(refund);
@@ -379,23 +389,25 @@ public class PaymentService {
         journalEntry = journalEntryRepository.save(journalEntry);
 
         LedgerAccount cashClearing =
-            ledgerAccountRepository.findByAccountCode("10001")
+            ledgerAccountRepository
+                .findByAccountCode(LedgerAccountCodes.CASH_CLEARING)
                 .orElseThrow(() -> new IllegalStateException(
                     "Cash Clearing account not found"));
         LedgerAccount deferredRevenue =
-            ledgerAccountRepository.findByAccountCode("20002")
+            ledgerAccountRepository
+                .findByAccountCode(LedgerAccountCodes.DEFERRED_REVENUE)
                 .orElseThrow(() -> new IllegalStateException(
                     "Deferred Revenue account not found"));
 
         Money money =
-            new Money(amountToRefund, new CurrencyCode(payment.getCurrency()));
+            Money.of(moneyToRefund.majorAmount(), payment.getCurrency());
 
         // DEBIT Deferred Revenue (Liability decreases)
         JournalLine debitLine = new JournalLine();
         debitLine.setJournalEntryId(journalEntry.getId());
         debitLine.setLedgerAccountId(deferredRevenue.getId());
         debitLine.setDirection(JournalLineType.DEBIT);
-        debitLine.setAmount(money.amountMinor());
+        debitLine.setAmount(money.majorAmount());
         debitLine.setCurrency(money.currency().value());
         journalLineRepository.save(debitLine);
 
@@ -404,7 +416,7 @@ public class PaymentService {
         creditLine.setJournalEntryId(journalEntry.getId());
         creditLine.setLedgerAccountId(cashClearing.getId());
         creditLine.setDirection(JournalLineType.CREDIT);
-        creditLine.setAmount(money.amountMinor());
+        creditLine.setAmount(money.majorAmount());
         creditLine.setCurrency(money.currency().value());
         journalLineRepository.save(creditLine);
 
@@ -412,16 +424,17 @@ public class PaymentService {
         RefundResponse response = new RefundResponse(
             refund.getId(),
             payment.getId(),
-            refund.getAmount().movePointRight(2),
+            moneyToRefund.toMinor(),
             refund.getCurrency(),
             payment.getCapturedAmount()
-                .subtract(payment.getRefundedAmount().add(amountToRefund))
+                .subtract(payment.getRefundedAmount()
+                    .add(moneyToRefund.majorAmount()))
                 .compareTo(BigDecimal.ZERO) == 0
                     ? PaymentStatus.FULLY_REFUNDED
                     : PaymentStatus.PARTIALLY_REFUNDED,
             refund.getProcessorRefundReference());
 
-        keyEntity.setResponseStatus("COMPLETED");
+        keyEntity.setResponseStatus(IdempotencyResponseStatus.COMPLETED);
         keyEntity.setResourceId(refund.getId());
         keyEntity.setEventId(event.getId());
         keyEntity.setResponseCode(201);

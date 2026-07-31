@@ -7,6 +7,7 @@ import com.jonasfp.paymentservice.payments.domain.Capture;
 import com.jonasfp.paymentservice.payments.domain.Refund;
 import com.jonasfp.paymentservice.reconciliation.domain.ProcessorStatementRow;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationBreak;
+import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationBreakType;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationRun;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationRunStatus;
 import com.jonasfp.paymentservice.reconciliation.infra.ProcessorStatementRowRepository;
@@ -16,6 +17,7 @@ import com.jonasfp.paymentservice.reconciliation.web.dto.ProcessorStatementCsvRo
 import com.jonasfp.paymentservice.reconciliation.web.dto.ReconciliationRunSummary;
 import com.jonasfp.paymentservice.payments.infra.CaptureRepository;
 import com.jonasfp.paymentservice.payments.infra.RefundRepository;
+import com.jonasfp.paymentservice.domain.Money;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,7 +27,13 @@ import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,9 +66,9 @@ public class ReconciliationService {
                 "Reconciliation run not found: " + runId));
 
         List<Object[]> breakCounts = breakRepository.countBreaksByType(runId);
-        Map<String, Long> summary = breakCounts.stream()
+        Map<ReconciliationBreakType, Long> summary = breakCounts.stream()
             .collect(Collectors.toMap(
-                row -> (String) row[0],
+                row -> (ReconciliationBreakType) row[0],
                 row -> (Long) row[1]));
 
         return new ReconciliationRunSummary(
@@ -104,6 +112,10 @@ public class ReconciliationService {
 
     @Transactional
     public UUID runReconciliation(LocalDate businessDate) {
+        // NOTE: The matching logic is intentionally a O(n^2) algorithm. I want
+        // to measure its performance before optimizing it to O(n) to see 
+        // the performance increase.
+
         // 1. Find the PENDING run
         ReconciliationRun run = runRepository
             .findByBusinessDateAndStatus(businessDate,
@@ -147,14 +159,13 @@ public class ReconciliationService {
                     if (captureOpt.isPresent()) {
                         Capture capture = captureOpt.get();
                         matchedCaptureIds.add(capture.getId());
-                        if (capture.getAmount()
-                            .compareTo(row.getAmount()) != 0) {
+                        if (!capture.getMoney().equals(row.getMoney())) {
                             breaks.add(createAmountMismatchBreak(run, row,
                                 capture.getPaymentId(),
                                 String.format(
                                     "Amount mismatch: Internal=%s, " +
                                         "Processor=%s",
-                                    capture.getAmount(), row.getAmount())));
+                                    capture.getMoney(), row.getMoney())));
                         }
                     } else {
                         breaks.add(createMissingInternalBreak(run, row,
@@ -171,14 +182,13 @@ public class ReconciliationService {
                     if (refundOpt.isPresent()) {
                         Refund refund = refundOpt.get();
                         matchedRefundIds.add(refund.getId());
-                        if (refund.getAmount()
-                            .compareTo(row.getAmount()) != 0) {
+                        if (!refund.getMoney().equals(row.getMoney())) {
                             breaks.add(createAmountMismatchBreak(run, row,
                                 refund.getPaymentId(),
                                 String.format(
                                     "Amount mismatch: Internal=%s, " +
                                         "Processor=%s",
-                                    refund.getAmount(), row.getAmount())));
+                                    refund.getMoney(), row.getMoney())));
                         }
                     } else {
                         breaks.add(createMissingInternalBreak(run, row,
@@ -230,7 +240,7 @@ public class ReconciliationService {
         ReconciliationBreak b = new ReconciliationBreak();
         b.setReconciliationRun(run);
         b.setProcessorStatementRow(row);
-        b.setBreakType("MISSING_INTERNAL_RECORD");
+        b.setBreakType(ReconciliationBreakType.MISSING_INTERNAL_RECORD);
         b.setBreakDetails(details);
         return b;
     }
@@ -240,7 +250,7 @@ public class ReconciliationService {
         ReconciliationBreak b = new ReconciliationBreak();
         b.setReconciliationRun(run);
         b.setPaymentId(paymentId);
-        b.setBreakType("MISSING_PROCESSOR_RECORD");
+        b.setBreakType(ReconciliationBreakType.MISSING_PROCESSOR_RECORD);
         b.setBreakDetails(details);
         return b;
     }
@@ -251,7 +261,7 @@ public class ReconciliationService {
         b.setReconciliationRun(run);
         b.setProcessorStatementRow(row);
         b.setPaymentId(paymentId);
-        b.setBreakType("AMOUNT_MISMATCH");
+        b.setBreakType(ReconciliationBreakType.AMOUNT_MISMATCH);
         b.setBreakDetails(details);
         return b;
     }
@@ -263,8 +273,7 @@ public class ReconciliationService {
         entity.setBusinessDate(LocalDate.parse(csv.businessDate()));
         entity.setRecordType(csv.recordType());
         entity.setProcessorReference(csv.processorReference());
-        entity.setAmount(csv.amount());
-        entity.setCurrency(csv.currency());
+        entity.setMoney(Money.of(csv.amount(), csv.currency()));
         return entity;
     }
 }

@@ -1,6 +1,7 @@
 package com.jonasfp.paymentservice.payments.web;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyActionType;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CaptureResponse;
@@ -78,7 +80,7 @@ class PaymentControllerIntegrationTest {
     void authorize_validRequest_returnsCreated() {
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
 
         webTestClient.post()
@@ -90,7 +92,7 @@ class PaymentControllerIntegrationTest {
             .expectStatus().isCreated()
             .expectBody()
             .jsonPath("$.customerId").isEqualTo("customer-1")
-            .jsonPath("$.amountMinor").isEqualTo(10000)
+            .jsonPath("$.minorAmount").isEqualTo(10000)
             .jsonPath("$.currency").isEqualTo("USD")
             .jsonPath("$.status").isEqualTo("AUTHORIZED");
     }
@@ -99,7 +101,7 @@ class PaymentControllerIntegrationTest {
     void authorize_idempotentRequest_returnsCreatedAndSameResponse() {
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
 
         // First request
@@ -130,8 +132,8 @@ class PaymentControllerIntegrationTest {
         assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
         assertThat(secondResponse.customerId())
             .isEqualTo(firstResponse.customerId());
-        assertThat(secondResponse.amountMinor())
-            .isEqualTo(firstResponse.amountMinor());
+        assertThat(secondResponse.minorAmount())
+            .isEqualTo(firstResponse.minorAmount());
 
         // DB assertions
         assertThat(paymentRepository.count()).isEqualTo(1);
@@ -142,10 +144,10 @@ class PaymentControllerIntegrationTest {
     void authorize_mismatchedRequestBody_returnsUnprocessableEntity() {
         String idempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest request1 = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
         AuthorizePaymentRequest request2 = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("20000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("20000"),
             "USD");
 
         // First request
@@ -172,7 +174,7 @@ class PaymentControllerIntegrationTest {
         // 1. Authorize a payment first
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
 
         PaymentResponse authResponse = webTestClient.post()
@@ -191,7 +193,7 @@ class PaymentControllerIntegrationTest {
         // 2. Capture the payment
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)
@@ -203,14 +205,14 @@ class PaymentControllerIntegrationTest {
             .expectBody()
             .jsonPath("$.paymentId").isEqualTo(paymentId.toString())
             .jsonPath("$.status").isEqualTo("CAPTURED")
-            .jsonPath("$.amountMinor").isEqualTo(10000);
+            .jsonPath("$.minorAmount").isEqualTo(10000);
     }
 
     @Test
     void capture_idempotentRequest_returnsCreatedAndSameResponse() {
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
 
         PaymentResponse authResponse = webTestClient.post()
@@ -228,7 +230,7 @@ class PaymentControllerIntegrationTest {
 
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         CaptureResponse firstResponse = webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)
@@ -255,8 +257,8 @@ class PaymentControllerIntegrationTest {
         assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
         assertThat(secondResponse.paymentId())
             .isEqualTo(firstResponse.paymentId());
-        assertThat(secondResponse.amountMinor())
-            .isEqualTo(firstResponse.amountMinor());
+        assertThat(secondResponse.minorAmount())
+            .isEqualTo(firstResponse.minorAmount());
         assertThat(secondResponse.currency())
             .isEqualTo(firstResponse.currency());
         assertThat(secondResponse.status()).isEqualTo(firstResponse.status());
@@ -267,7 +269,7 @@ class PaymentControllerIntegrationTest {
         assertThat(captureRepository.count()).isEqualTo(1);
         assertThat(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType(
-                "customer-1", capIdempotencyKey, "CAPTURE"))
+                "customer-1", capIdempotencyKey, IdempotencyActionType.CAPTURE))
                     .isPresent();
     }
 
@@ -275,7 +277,7 @@ class PaymentControllerIntegrationTest {
     void capture_mismatchedRequestBody_returnsUnprocessableEntity() {
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"),
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"),
             "USD");
 
         PaymentResponse authResponse = webTestClient.post()
@@ -293,9 +295,9 @@ class PaymentControllerIntegrationTest {
 
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest request1 = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
         CapturePaymentRequest request2 = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("20000"), "USD");
+            "customer-1", new BigInteger("20000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)
@@ -319,7 +321,7 @@ class PaymentControllerIntegrationTest {
         // 1. Authorize a payment
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
 
         PaymentResponse authResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
@@ -337,7 +339,7 @@ class PaymentControllerIntegrationTest {
         // 2. Capture the payment
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)
@@ -350,7 +352,7 @@ class PaymentControllerIntegrationTest {
         // 3. Refund the payment
         String refIdempotencyKey = UUID.randomUUID().toString();
         RefundRequest refRequest = new RefundRequest(
-            "customer-1", new BigDecimal("5000"), "USD");
+            "customer-1", new BigInteger("5000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/refunds", paymentId)
@@ -362,14 +364,14 @@ class PaymentControllerIntegrationTest {
             .expectBody()
             .jsonPath("$.paymentId").isEqualTo(paymentId.toString())
             .jsonPath("$.status").isEqualTo("PARTIALLY_REFUNDED")
-            .jsonPath("$.amountMinor").isEqualTo(5000);
+            .jsonPath("$.minorAmount").isEqualTo(5000);
     }
 
     @Test
     void refund_idempotentRequest_returnsCreatedAndSameResponse() {
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
 
         PaymentResponse authResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
@@ -386,7 +388,7 @@ class PaymentControllerIntegrationTest {
 
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)
@@ -398,7 +400,7 @@ class PaymentControllerIntegrationTest {
 
         String refIdempotencyKey = UUID.randomUUID().toString();
         RefundRequest refRequest = new RefundRequest(
-            "customer-1", new BigDecimal("5000"), "USD");
+            "customer-1", new BigInteger("5000"), "USD");
 
         RefundResponse firstResponse = webTestClient.post()
             .uri("/v1/payments/{id}/refunds", paymentId)
@@ -425,8 +427,8 @@ class PaymentControllerIntegrationTest {
         assertThat(secondResponse.id()).isEqualTo(firstResponse.id());
         assertThat(secondResponse.paymentId())
             .isEqualTo(firstResponse.paymentId());
-        assertThat(secondResponse.amountMinor())
-            .isEqualTo(firstResponse.amountMinor());
+        assertThat(secondResponse.minorAmount())
+            .isEqualTo(firstResponse.minorAmount());
         assertThat(secondResponse.currency())
             .isEqualTo(firstResponse.currency());
         assertThat(secondResponse.status()).isEqualTo(firstResponse.status());
@@ -438,7 +440,7 @@ class PaymentControllerIntegrationTest {
         assertThat(refundRepository.count()).isEqualTo(1);
         assertThat(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType(
-                "customer-1", refIdempotencyKey, "REFUND"))
+                "customer-1", refIdempotencyKey, IdempotencyActionType.REFUND))
                     .isPresent();
     }
 
@@ -446,7 +448,7 @@ class PaymentControllerIntegrationTest {
     void refund_mismatchedRequestBody_returnsUnprocessableEntity() {
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
 
         PaymentResponse authResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
@@ -463,7 +465,7 @@ class PaymentControllerIntegrationTest {
 
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)
@@ -475,9 +477,9 @@ class PaymentControllerIntegrationTest {
 
         String refIdempotencyKey = UUID.randomUUID().toString();
         RefundRequest request1 = new RefundRequest(
-            "customer-1", new BigDecimal("5000"), "USD");
+            "customer-1", new BigInteger("5000"), "USD");
         RefundRequest request2 = new RefundRequest(
-            "customer-1", new BigDecimal("7000"), "USD");
+            "customer-1", new BigInteger("7000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/refunds", paymentId)
@@ -500,7 +502,7 @@ class PaymentControllerIntegrationTest {
     void refund_nonCapturedPayment_returnsConflict() {
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
 
         PaymentResponse authResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
@@ -515,7 +517,7 @@ class PaymentControllerIntegrationTest {
 
         String refIdempotencyKey = UUID.randomUUID().toString();
         RefundRequest refRequest = new RefundRequest(
-            "customer-1", new BigDecimal("5000"), "USD");
+            "customer-1", new BigInteger("5000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/refunds", authResponse.id())
@@ -530,7 +532,7 @@ class PaymentControllerIntegrationTest {
     void refund_overRefundedPayment_returnsBadRequest() {
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
 
         PaymentResponse authResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
@@ -545,7 +547,7 @@ class PaymentControllerIntegrationTest {
 
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", authResponse.id())
@@ -557,7 +559,7 @@ class PaymentControllerIntegrationTest {
 
         String refIdempotencyKey = UUID.randomUUID().toString();
         RefundRequest refRequest = new RefundRequest(
-            "customer-1", new BigDecimal("15000"), "USD");
+            "customer-1", new BigInteger("15000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/refunds", authResponse.id())

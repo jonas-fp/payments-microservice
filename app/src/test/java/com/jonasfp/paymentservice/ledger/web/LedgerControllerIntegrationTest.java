@@ -1,6 +1,7 @@
 package com.jonasfp.paymentservice.ledger.web;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -17,6 +18,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.jonasfp.paymentservice.ledger.domain.LedgerAccount;
+import com.jonasfp.paymentservice.ledger.domain.LedgerAccountCodes;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
@@ -66,14 +68,14 @@ class LedgerControllerIntegrationTest {
     void getAccountBalance_afterCapture_returnsCorrectBalance() {
         // 1. Get the Cash Clearing account (Asset)
         LedgerAccount cashClearing =
-            ledgerAccountRepository.findByAccountCode("10001")
+            ledgerAccountRepository.findByAccountCode(LedgerAccountCodes.CASH_CLEARING)
                 .orElseThrow();
         UUID accountId = cashClearing.getId();
 
         // 2. Authorize a payment of 100.00
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
 
         PaymentResponse authResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
@@ -91,7 +93,7 @@ class LedgerControllerIntegrationTest {
         // 3. Capture the payment
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)
@@ -111,7 +113,7 @@ class LedgerControllerIntegrationTest {
             .expectStatus().isOk()
             .expectBody()
             .jsonPath("$.accountId").isEqualTo(accountId.toString())
-            .jsonPath("$.accountCode").isEqualTo("10001")
+            .jsonPath("$.accountCode").isEqualTo(LedgerAccountCodes.CASH_CLEARING)
             .jsonPath("$.balance").isEqualTo(100.00)
             .jsonPath("$.currency").isEqualTo("USD");
     }
@@ -121,7 +123,7 @@ class LedgerControllerIntegrationTest {
         // 1. Authorize and Capture a payment of 100.00
         String authIdempotencyKey = UUID.randomUUID().toString();
         AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
-            "customer-1", UUID.randomUUID(), new BigDecimal("10000"), "USD");
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
 
         PaymentResponse authResponse = webTestClient.post()
             .uri("/v1/payments/authorize")
@@ -138,7 +140,7 @@ class LedgerControllerIntegrationTest {
 
         String capIdempotencyKey = UUID.randomUUID().toString();
         CapturePaymentRequest capRequest = new CapturePaymentRequest(
-            "customer-1", new BigDecimal("10000"), "USD");
+            "customer-1", new BigInteger("10000"), "USD");
 
         webTestClient.post()
             .uri("/v1/payments/{id}/capture", paymentId)
@@ -160,13 +162,13 @@ class LedgerControllerIntegrationTest {
             .jsonPath("$.totalDebits").isEqualTo(100.00)
             .jsonPath("$.totalCredits").isEqualTo(100.00)
             .jsonPath("$.isBalanced").isEqualTo(true)
-            .jsonPath("$.entries[?(@.accountCode=='10001')].totalDebit")
+            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.CASH_CLEARING + "')].totalDebit")
             .isEqualTo(100.00)
-            .jsonPath("$.entries[?(@.accountCode=='10001')].totalCredit")
+            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.CASH_CLEARING + "')].totalCredit")
             .isEqualTo(0)
-            .jsonPath("$.entries[?(@.accountCode=='20002')].totalDebit")
+            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.DEFERRED_REVENUE + "')].totalDebit")
             .isEqualTo(0)
-            .jsonPath("$.entries[?(@.accountCode=='20002')].totalCredit")
+            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.DEFERRED_REVENUE + "')].totalCredit")
             .isEqualTo(100.00);
     }
 }

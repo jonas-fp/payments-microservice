@@ -1,4 +1,3 @@
-app/HELP.md
 *.env
 target/
 !**/src/main/**/target/
@@ -51,3 +50,6 @@ docs/
 
 # Python
 .venv
+
+# Bash Scripts
+/scripts
