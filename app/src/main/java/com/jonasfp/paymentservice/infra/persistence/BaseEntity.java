@@ -28,7 +28,8 @@ public abstract class BaseEntity {
     }
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private java.time.OffsetDateTime createdAt = java.time.OffsetDateTime.now();
+    private java.time.OffsetDateTime createdAt =
+        java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC);
 
     public java.time.OffsetDateTime getCreatedAt() {
         return createdAt;

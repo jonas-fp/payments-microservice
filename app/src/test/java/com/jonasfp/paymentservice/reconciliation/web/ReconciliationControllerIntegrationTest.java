@@ -127,7 +127,7 @@ class ReconciliationControllerIntegrationTest {
 
     @Test
     void runReconciliation_withoutBreaks_matchesAllRecords() {
-        LocalDate businessDate = LocalDate.now();
+        LocalDate businessDate = LocalDate.now(java.time.ZoneOffset.UTC);
         String idempotencyKey = UUID.randomUUID().toString();
 
         // 1. Create internal record (Authorize + Capture)
@@ -183,7 +183,7 @@ class ReconciliationControllerIntegrationTest {
 
     @Test
     void runReconciliation_withBreaks_identifiesAllDiscrepancies() {
-        LocalDate businessDate = LocalDate.now();
+        LocalDate businessDate = LocalDate.now(java.time.ZoneOffset.UTC);
 
         // 1. Setup internal records
         // Payment A: Amount mismatch (Internal 100, Processor 90)
