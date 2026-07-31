@@ -18,6 +18,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.jonasfp.paymentservice.ledger.domain.LedgerAccount;
+import com.jonasfp.paymentservice.ledger.domain.LedgerAccountCodes;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
@@ -67,7 +68,7 @@ class LedgerControllerIntegrationTest {
     void getAccountBalance_afterCapture_returnsCorrectBalance() {
         // 1. Get the Cash Clearing account (Asset)
         LedgerAccount cashClearing =
-            ledgerAccountRepository.findByAccountCode("10001")
+            ledgerAccountRepository.findByAccountCode(LedgerAccountCodes.CASH_CLEARING)
                 .orElseThrow();
         UUID accountId = cashClearing.getId();
 
@@ -112,7 +113,7 @@ class LedgerControllerIntegrationTest {
             .expectStatus().isOk()
             .expectBody()
             .jsonPath("$.accountId").isEqualTo(accountId.toString())
-            .jsonPath("$.accountCode").isEqualTo("10001")
+            .jsonPath("$.accountCode").isEqualTo(LedgerAccountCodes.CASH_CLEARING)
             .jsonPath("$.balance").isEqualTo(100.00)
             .jsonPath("$.currency").isEqualTo("USD");
     }
@@ -161,13 +162,13 @@ class LedgerControllerIntegrationTest {
             .jsonPath("$.totalDebits").isEqualTo(100.00)
             .jsonPath("$.totalCredits").isEqualTo(100.00)
             .jsonPath("$.isBalanced").isEqualTo(true)
-            .jsonPath("$.entries[?(@.accountCode=='10001')].totalDebit")
+            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.CASH_CLEARING + "')].totalDebit")
             .isEqualTo(100.00)
-            .jsonPath("$.entries[?(@.accountCode=='10001')].totalCredit")
+            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.CASH_CLEARING + "')].totalCredit")
             .isEqualTo(0)
-            .jsonPath("$.entries[?(@.accountCode=='20002')].totalDebit")
+            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.DEFERRED_REVENUE + "')].totalDebit")
             .isEqualTo(0)
-            .jsonPath("$.entries[?(@.accountCode=='20002')].totalCredit")
+            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.DEFERRED_REVENUE + "')].totalCredit")
             .isEqualTo(100.00);
     }
 }

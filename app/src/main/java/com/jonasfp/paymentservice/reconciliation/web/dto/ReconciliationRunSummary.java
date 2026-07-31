@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
+import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationBreakType;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationRunStatus;
 
 public record ReconciliationRunSummary(
@@ -12,5 +13,5 @@ public record ReconciliationRunSummary(
     ReconciliationRunStatus status,
     OffsetDateTime startedAt,
     OffsetDateTime completedAt,
-    Map<String, Long> breakSummary
+    Map<ReconciliationBreakType, Long> breakSummary
 ) {}

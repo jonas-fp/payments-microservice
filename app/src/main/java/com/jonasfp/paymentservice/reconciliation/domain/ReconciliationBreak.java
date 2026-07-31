@@ -6,6 +6,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import java.util.UUID;
 import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 
@@ -24,8 +26,9 @@ public class ReconciliationBreak extends BaseEntity {
     @Column(name = "payment_id")
     private UUID paymentId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "break_type", nullable = false, length = 64)
-    private String breakType;
+    private ReconciliationBreakType breakType;
 
     @Column(name = "break_details", nullable = false, columnDefinition = "TEXT")
     private String breakDetails;
@@ -57,11 +60,11 @@ public class ReconciliationBreak extends BaseEntity {
         this.paymentId = paymentId;
     }
 
-    public String getBreakType() {
+    public ReconciliationBreakType getBreakType() {
         return breakType;
     }
 
-    public void setBreakType(String breakType) {
+    public void setBreakType(ReconciliationBreakType breakType) {
         this.breakType = breakType;
     }
 

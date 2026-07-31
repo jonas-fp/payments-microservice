@@ -21,7 +21,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jonasfp.paymentservice.domain.PaymentStatus;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyActionType;
 import com.jonasfp.paymentservice.payments.domain.IdempotencyKey;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyResponseStatus;
 import com.jonasfp.paymentservice.payments.domain.Payment;
 import com.jonasfp.paymentservice.payments.domain.PaymentEvent;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
@@ -131,14 +133,14 @@ class PaymentServiceTest {
         IdempotencyKey existingKey = new IdempotencyKey();
         existingKey.setCustomerId("customer-1");
         existingKey.setIdempotencyKey(idempotencyKey);
-        existingKey.setActionType("AUTHORIZE");
+        existingKey.setActionType(IdempotencyActionType.AUTHORIZE);
         existingKey.setRequestHash(requestHash);
-        existingKey.setResponseStatus("COMPLETED");
+        existingKey.setResponseStatus(IdempotencyResponseStatus.COMPLETED);
         existingKey.setResponseBody(objectMapper.valueToTree(cachedResponse));
 
         when(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
-                idempotencyKey, "AUTHORIZE"))
+                idempotencyKey, IdempotencyActionType.AUTHORIZE))
                     .thenReturn(Optional.of(existingKey));
 
         // When
@@ -166,13 +168,13 @@ class PaymentServiceTest {
         IdempotencyKey existingKey = new IdempotencyKey();
         existingKey.setCustomerId("customer-1");
         existingKey.setIdempotencyKey(idempotencyKey);
-        existingKey.setActionType("AUTHORIZE");
+        existingKey.setActionType(IdempotencyActionType.AUTHORIZE);
         existingKey.setRequestHash(requestHash);
-        existingKey.setResponseStatus("STARTED");
+        existingKey.setResponseStatus(IdempotencyResponseStatus.STARTED);
 
         when(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
-                idempotencyKey, "AUTHORIZE"))
+                idempotencyKey, IdempotencyActionType.AUTHORIZE))
                     .thenReturn(Optional.of(existingKey));
 
         // When / Then
@@ -193,12 +195,12 @@ class PaymentServiceTest {
         IdempotencyKey existingKey = new IdempotencyKey();
         existingKey.setCustomerId("customer-1");
         existingKey.setIdempotencyKey(idempotencyKey);
-        existingKey.setActionType("AUTHORIZE");
+        existingKey.setActionType(IdempotencyActionType.AUTHORIZE);
         existingKey.setRequestHash("different-hash");
 
         when(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType("customer-1",
-                idempotencyKey, "AUTHORIZE"))
+                idempotencyKey, IdempotencyActionType.AUTHORIZE))
                     .thenReturn(Optional.of(existingKey));
 
         // When / Then

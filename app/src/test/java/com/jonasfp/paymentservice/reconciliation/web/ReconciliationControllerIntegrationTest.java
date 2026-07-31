@@ -16,6 +16,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
+import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationBreakType;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationRunStatus;
 import com.jonasfp.paymentservice.reconciliation.infra.ProcessorStatementRowRepository;
 import com.jonasfp.paymentservice.reconciliation.infra.ReconciliationBreakRepository;
@@ -228,11 +229,11 @@ class ReconciliationControllerIntegrationTest {
                 assertThat(summary.status())
                     .isEqualTo(ReconciliationRunStatus.SUCCEEDED);
                 assertThat(summary.breakSummary())
-                    .containsEntry("AMOUNT_MISMATCH", 1L);
+                    .containsEntry(ReconciliationBreakType.AMOUNT_MISMATCH, 1L);
                 assertThat(summary.breakSummary())
-                    .containsEntry("MISSING_INTERNAL_RECORD", 1L);
+                    .containsEntry(ReconciliationBreakType.MISSING_INTERNAL_RECORD, 1L);
                 assertThat(summary.breakSummary())
-                    .containsEntry("MISSING_PROCESSOR_RECORD", 1L);
+                    .containsEntry(ReconciliationBreakType.MISSING_PROCESSOR_RECORD, 1L);
             });
     }
 

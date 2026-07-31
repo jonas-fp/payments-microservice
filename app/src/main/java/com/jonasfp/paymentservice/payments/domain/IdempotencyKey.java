@@ -10,6 +10,8 @@ import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 
@@ -17,8 +19,9 @@ import jakarta.persistence.Table;
 @Table(name = "idempotency_keys")
 public class IdempotencyKey extends BaseEntity {
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "action_type", nullable = false, length = 128)
-    private String actionType;
+    private IdempotencyActionType actionType;
 
     @Column(name = "customer_id", nullable = false, length = 128)
     private String customerId;
@@ -42,17 +45,17 @@ public class IdempotencyKey extends BaseEntity {
     @Column(name = "response_code")
     private Integer responseCode;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "response_status", nullable = false, length = 128)
-    private String responseStatus;
+    private IdempotencyResponseStatus responseStatus;
 
-    public IdempotencyKey() {
-    }
+    public IdempotencyKey() {}
 
-    public String getActionType() {
+    public IdempotencyActionType getActionType() {
         return actionType;
     }
 
-    public void setActionType(String actionType) {
+    public void setActionType(IdempotencyActionType actionType) {
         this.actionType = actionType;
     }
 
@@ -112,11 +115,11 @@ public class IdempotencyKey extends BaseEntity {
         this.responseCode = responseCode;
     }
 
-    public String getResponseStatus() {
+    public IdempotencyResponseStatus getResponseStatus() {
         return responseStatus;
     }
 
-    public void setResponseStatus(String responseStatus) {
+    public void setResponseStatus(IdempotencyResponseStatus responseStatus) {
         this.responseStatus = responseStatus;
     }
 }

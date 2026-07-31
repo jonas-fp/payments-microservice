@@ -18,6 +18,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.jonasfp.paymentservice.payments.domain.IdempotencyActionType;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CaptureResponse;
@@ -268,7 +269,7 @@ class PaymentControllerIntegrationTest {
         assertThat(captureRepository.count()).isEqualTo(1);
         assertThat(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType(
-                "customer-1", capIdempotencyKey, "CAPTURE"))
+                "customer-1", capIdempotencyKey, IdempotencyActionType.CAPTURE))
                     .isPresent();
     }
 
@@ -439,7 +440,7 @@ class PaymentControllerIntegrationTest {
         assertThat(refundRepository.count()).isEqualTo(1);
         assertThat(idempotencyKeyRepository
             .findByCustomerIdAndIdempotencyKeyAndActionType(
-                "customer-1", refIdempotencyKey, "REFUND"))
+                "customer-1", refIdempotencyKey, IdempotencyActionType.REFUND))
                     .isPresent();
     }
 

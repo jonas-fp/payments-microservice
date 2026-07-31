@@ -7,6 +7,7 @@ import com.jonasfp.paymentservice.payments.domain.Capture;
 import com.jonasfp.paymentservice.payments.domain.Refund;
 import com.jonasfp.paymentservice.reconciliation.domain.ProcessorStatementRow;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationBreak;
+import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationBreakType;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationRun;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationRunStatus;
 import com.jonasfp.paymentservice.reconciliation.infra.ProcessorStatementRowRepository;
@@ -65,9 +66,9 @@ public class ReconciliationService {
                 "Reconciliation run not found: " + runId));
 
         List<Object[]> breakCounts = breakRepository.countBreaksByType(runId);
-        Map<String, Long> summary = breakCounts.stream()
+        Map<ReconciliationBreakType, Long> summary = breakCounts.stream()
             .collect(Collectors.toMap(
-                row -> (String) row[0],
+                row -> (ReconciliationBreakType) row[0],
                 row -> (Long) row[1]));
 
         return new ReconciliationRunSummary(
@@ -239,7 +240,7 @@ public class ReconciliationService {
         ReconciliationBreak b = new ReconciliationBreak();
         b.setReconciliationRun(run);
         b.setProcessorStatementRow(row);
-        b.setBreakType("MISSING_INTERNAL_RECORD");
+        b.setBreakType(ReconciliationBreakType.MISSING_INTERNAL_RECORD);
         b.setBreakDetails(details);
         return b;
     }
@@ -249,7 +250,7 @@ public class ReconciliationService {
         ReconciliationBreak b = new ReconciliationBreak();
         b.setReconciliationRun(run);
         b.setPaymentId(paymentId);
-        b.setBreakType("MISSING_PROCESSOR_RECORD");
+        b.setBreakType(ReconciliationBreakType.MISSING_PROCESSOR_RECORD);
         b.setBreakDetails(details);
         return b;
     }
@@ -260,7 +261,7 @@ public class ReconciliationService {
         b.setReconciliationRun(run);
         b.setProcessorStatementRow(row);
         b.setPaymentId(paymentId);
-        b.setBreakType("AMOUNT_MISMATCH");
+        b.setBreakType(ReconciliationBreakType.AMOUNT_MISMATCH);
         b.setBreakDetails(details);
         return b;
     }

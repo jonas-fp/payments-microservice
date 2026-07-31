@@ -63,9 +63,7 @@ public class LedgerService {
         String finalCurrency =
             balance != null ? balance.currency().value() : "USD";
 
-        if ("LIABILITY".equals(account.getAccountType()) ||
-            "EQUITY".equals(account.getAccountType()) ||
-            "REVENUE".equals(account.getAccountType())) {
+        if (account.getAccountType().isCreditNormal()) {
             finalAmount = finalAmount.negate();
         }
 
