@@ -50,3 +50,6 @@ docs/
 
 # Python
 .venv
+
+# Bash Scripts
+/scripts
