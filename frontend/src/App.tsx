@@ -1,24 +1,24 @@
-import { useEffect, useState } from 'react'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+// TODO: implement lazy loading to prevent the client from downloading every
+//       page at once.
+import Home from './pages/home';  
+import TrialBalancePage from './pages/ledger/trial-balance';
+import './App.css';
 
 function App() {
-  const [message, setMessage] = useState<string>('Loading...')
-
-  useEffect(() => {
-    fetch('/api/hello')
-      .then((res) => res.text())
-      .then((data) => setMessage(data))
-      .catch((err) => {
-        console.error('Error fetching message:', err)
-        setMessage('Error connecting to backend')
-      })
-  }, [])
-
   return (
-    <div className="dashboard-container">
-      <h1>Payments Dashboard</h1>
-      <p>Backend Message: <strong>{message}</strong></p>
-    </div>
+    <BrowserRouter>
+      <div className='dashboard-container'>
+        <Routes>
+          <Route path="/" element={<Navigate to="/home" replace />} />
+
+          <Route path="/home" element={<Home />} />
+
+          <Route path="/ledger/trial-balance" element={<TrialBalancePage />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
   )
 }
 
