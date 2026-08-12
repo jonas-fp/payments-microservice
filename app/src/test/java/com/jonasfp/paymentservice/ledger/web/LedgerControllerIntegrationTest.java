@@ -1,6 +1,5 @@
 package com.jonasfp.paymentservice.ledger.web;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.OffsetDateTime;
 import java.util.UUID;

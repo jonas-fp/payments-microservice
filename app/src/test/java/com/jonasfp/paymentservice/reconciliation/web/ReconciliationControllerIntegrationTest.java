@@ -22,7 +22,6 @@ import com.jonasfp.paymentservice.reconciliation.infra.ProcessorStatementRowRepo
 import com.jonasfp.paymentservice.reconciliation.infra.ReconciliationBreakRepository;
 import com.jonasfp.paymentservice.reconciliation.infra.ReconciliationRunRepository;
 import com.jonasfp.paymentservice.reconciliation.web.dto.ReconciliationRunSummary;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.UUID;
