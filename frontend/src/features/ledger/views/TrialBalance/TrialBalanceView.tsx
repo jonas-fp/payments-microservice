@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { TrialBalanceResponse } from '../../types/ledger';
+import { ledgerService } from '../../services/ledgerService';
 
 export function TrialBalanceView() {
   const [trialBalance, setTrialBalance] = useState<TrialBalanceResponse | null>(
@@ -8,15 +9,14 @@ export function TrialBalanceView() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/v1/payments/subledger/trial-balance')
+    ledgerService
+      .getTrialBalance()
       .then((res) => {
-        if (!res.ok) throw new Error('Fetch response not in 2xx range');
-        return res.json();
+        setTrialBalance(res);
       })
-      .then((data) => setTrialBalance(data))
       .catch((err) => {
         console.error('Error fetching trial balance: ', err);
-        setError('Error fetching trial balance');
+        setError(`'Failed to load trial balance data: ${err.message}`);
       });
   }, []);
 
