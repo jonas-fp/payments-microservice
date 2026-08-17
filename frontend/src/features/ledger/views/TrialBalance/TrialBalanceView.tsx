@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { TrialBalanceResponse } from '../../types/ledger';
 import { ledgerService } from '../../services/ledgerService';
+import TrialBalanceTable from '../../components/TrialBalanceTable';
 
 export function TrialBalanceView() {
   const [trialBalance, setTrialBalance] = useState<TrialBalanceResponse | null>(
@@ -16,7 +17,7 @@ export function TrialBalanceView() {
       })
       .catch((err) => {
         console.error('Error fetching trial balance: ', err);
-        setError(`'Failed to load trial balance data: ${err.message}`);
+        setError(`Failed to load trial balance data: ${err.message}`);
       });
   }, []);
 
@@ -25,12 +26,7 @@ export function TrialBalanceView() {
 
   return (
     <div>
-      <p>Here is the trial-balance data from the backend:</p>
-      <pre
-        style={{ background: '#f4f4f4', padding: '10px', borderRadius: '5px' }}
-      >
-        {JSON.stringify(trialBalance, null, 2)}
-      </pre>
+      <TrialBalanceTable trialBalanceData={trialBalance} />
     </div>
   );
 }
