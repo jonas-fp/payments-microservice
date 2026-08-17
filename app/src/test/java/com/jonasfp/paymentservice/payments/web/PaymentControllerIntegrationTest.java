@@ -1,6 +1,5 @@
 package com.jonasfp.paymentservice.payments.web;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.UUID;
 
