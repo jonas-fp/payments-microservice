@@ -1,4 +1,4 @@
-import axiosInstance from '../../../services/axiosInstance';
+import { axiosInstance } from '../../../services/axiosInstance';
 import type { TrialBalanceResponse } from '../types/ledger';
 
 export const ledgerService = {

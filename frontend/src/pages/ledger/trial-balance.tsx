@@ -1,5 +1,5 @@
-import { TrialBalanceView } from "../../features/ledger";
+import { TrialBalanceView } from '../../features/ledger';
 
-export default function TrialBalancePage() {
-    return <TrialBalanceView />;
+export function TrialBalancePage() {
+  return <TrialBalanceView />;
 }

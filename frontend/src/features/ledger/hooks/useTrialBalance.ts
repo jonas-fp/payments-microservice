@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { TrialBalanceResponse } from '../types/ledger';
 import { ledgerService } from '../services/ledgerService';
 
-export default function useTrialBalance() {
+export function useTrialBalance() {
   const [trialBalanceData, setTrialBalanceData] =
     useState<TrialBalanceResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);

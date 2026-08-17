@@ -1,17 +1,17 @@
-import { BrowserRouter, Routes, Route, Navigate} from 'react-router-dom';
-import NavBar from './components/Navbar.tsx';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Navbar } from './components/Navbar.tsx';
 
 // TODO: implement lazy loading to prevent the client from downloading every
 //       page at once.
-import Home from './pages/home';
-import TrialBalancePage from './pages/ledger/trial-balance';
+import { Home } from './pages/home';
+import { TrialBalancePage } from './pages/ledger/trial-balance';
 import './App.css';
 
-function App() {
+export function App() {
   return (
     <BrowserRouter>
       <div className='dashboard-container'>
-        <NavBar />
+        <Navbar />
 
         <Routes>
           <Route path='/' element={<Navigate to='/home' replace />} />
@@ -24,5 +24,3 @@ function App() {
     </BrowserRouter>
   );
 }
-
-export default App;

@@ -1,5 +1,5 @@
-import useTrialBalance from '../../hooks/useTrialBalance';
-import TrialBalanceTable from '../../components/TrialBalanceTable';
+import { useTrialBalance } from '../../hooks/useTrialBalance';
+import { TrialBalanceTable } from '../../components/TrialBalanceTable';
 
 export function TrialBalanceView() {
   const { trialBalanceData, isLoading, error } = useTrialBalance();

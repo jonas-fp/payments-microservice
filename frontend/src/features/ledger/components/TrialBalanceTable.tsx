@@ -9,7 +9,7 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
 });
 
-export default function TrialBalanceTable({ trialBalanceData }: Props) {
+export function TrialBalanceTable({ trialBalanceData }: Props) {
   return (
     <div>
       <h2>
