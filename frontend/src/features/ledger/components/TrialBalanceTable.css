@@ -1,0 +1,34 @@
+h2 {
+  margin: 0px;
+  margin-top: 5px;
+  margin-left: 5px;
+}
+
+p {
+  margin: 0;
+  margin-left: 7px;
+  margin-bottom: 5px;
+}
+
+table {
+  border-collapse: collapse;
+  border: 2px solid;
+  margin-left: 7px;
+}
+
+th, td {
+  border: 1px solid;
+  padding: 10px;
+}
+
+th {
+  background-color: rgb(217, 217, 217);
+}
+
+.money-cell {
+  text-align: right;
+}
+
+.totals-cell {
+  font-weight: bold;
+}

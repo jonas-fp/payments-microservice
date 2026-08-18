@@ -1,5 +1,7 @@
 import type { TrialBalanceResponse } from '../types/ledger';
 
+import './TrialBalanceTable.css';
+
 interface Props {
   trialBalanceData: TrialBalanceResponse;
 }
@@ -25,10 +27,6 @@ export function TrialBalanceTable({ trialBalanceData }: Props) {
         })}
       </p>
 
-      <div>
-        Status: {trialBalanceData.isBalanced ? 'balanced' : 'unbalanced'}
-      </div>
-
       <table>
         <thead>
           <tr>
@@ -43,16 +41,26 @@ export function TrialBalanceTable({ trialBalanceData }: Props) {
             <tr key={entry.accountCode}>
               <td>{entry.accountCode}</td>
               <td>{entry.accountName}</td>
-              <td>{currencyFormatter.format(entry.totalDebit)}</td>
-              <td>{currencyFormatter.format(entry.totalCredit)}</td>
+              <td className='money-cell'>
+                {currencyFormatter.format(entry.totalDebit)}
+              </td>
+              <td className='money-cell'>
+                {currencyFormatter.format(entry.totalCredit)}
+              </td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan={2}>Totals</td>
-            <td>{currencyFormatter.format(trialBalanceData.totalDebits)}</td>
-            <td>{currencyFormatter.format(trialBalanceData.totalCredits)}</td>
+            <td className='totals-cell' colSpan={2}>
+              Totals
+            </td>
+            <td className='money-cell'>
+              {currencyFormatter.format(trialBalanceData.totalDebits)}
+            </td>
+            <td className='money-cell'>
+              {currencyFormatter.format(trialBalanceData.totalCredits)}
+            </td>
           </tr>
         </tfoot>
       </table>
