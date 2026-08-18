@@ -55,10 +55,10 @@ export function TrialBalanceTable({ trialBalanceData }: Props) {
             <td className='totals-cell' colSpan={2}>
               Totals
             </td>
-            <td className='money-cell'>
+            <td className='money-cell totals-cell'>
               {currencyFormatter.format(trialBalanceData.totalDebits)}
             </td>
-            <td className='money-cell'>
+            <td className='money-cell totals-cell'>
               {currencyFormatter.format(trialBalanceData.totalCredits)}
             </td>
           </tr>
