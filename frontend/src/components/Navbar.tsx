@@ -5,12 +5,12 @@ import './Navbar.css';
 export function Navbar() {
   return (
     <nav>
-      <ul>
-        <li>
-          <NavLink to='/home'>Home</NavLink>
+      <ul className='navbar'>
+        <li >
+          <NavLink className='navbar-link' to='/home'>Home</NavLink>
         </li>
         <li>
-          <NavLink to='/ledger/trial-balance'>Trial Balance</NavLink>
+          <NavLink  className='navbar-link' to='/ledger/trial-balance'>Trial Balance</NavLink>
         </li>
       </ul>
     </nav>
