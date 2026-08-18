@@ -12,8 +12,9 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 export function TrialBalanceTable({ trialBalanceData }: Props) {
   return (
     <div>
-      <h2>
-        Trial Balance (as of{' '}
+      <h2>Trial Balance</h2>
+      <p>
+        as of{' '}
         {new Date(trialBalanceData.asOf).toLocaleString('en-US', {
           year: 'numeric',
           month: 'short',
@@ -22,8 +23,7 @@ export function TrialBalanceTable({ trialBalanceData }: Props) {
           minute: '2-digit',
           timeZoneName: 'short',
         })}
-        )
-      </h2>
+      </p>
 
       <div>
         Status: {trialBalanceData.isBalanced ? 'balanced' : 'unbalanced'}
