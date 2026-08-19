@@ -20,3 +20,9 @@
 .navbar-link.active {
   background-color: grey;
 }
+
+.navbar-logo {
+  height: 40px; 
+  padding: 3px 16px;
+  display: block;
+}
