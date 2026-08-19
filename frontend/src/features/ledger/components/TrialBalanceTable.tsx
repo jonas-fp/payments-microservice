@@ -14,19 +14,6 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 export function TrialBalanceTable({ trialBalanceData }: Props) {
   return (
     <div>
-      <h2>Trial Balance</h2>
-      <p>
-        as of{' '}
-        {new Date(trialBalanceData.asOf).toLocaleString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          timeZoneName: 'short',
-        })}
-      </p>
-
       <table>
         <thead>
           <tr>
