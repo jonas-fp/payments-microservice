@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { TrialBalanceResponse } from '../types/ledger';
 import { ledgerService } from '../services/ledgerService';
 
-export function useTrialBalance(asOf?: string) {
+export function useTrialBalance(refreshSignal: boolean, asOf?: string) {
   const [trialBalanceData, setTrialBalanceData] =
     useState<TrialBalanceResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -18,7 +18,7 @@ export function useTrialBalance(asOf?: string) {
         setError(`Failed to load trial balance data: ${err.message}`);
       })
       .finally(() => setIsLoading(false));
-  }, [asOf]);
+  }, [asOf, refreshSignal]);
 
   return { trialBalanceData, isLoading, error };
 }

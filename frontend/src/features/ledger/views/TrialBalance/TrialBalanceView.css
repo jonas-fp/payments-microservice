@@ -14,3 +14,12 @@ input {
   margin-left: 7px;
   margin-bottom: 5px;
 }
+
+.trial-balance-options {
+  display: flex;
+  margin-bottom: 5px;
+}
+
+.refresh-button {
+  margin-left: 180px;
+}
