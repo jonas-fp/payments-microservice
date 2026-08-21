@@ -1,7 +1,7 @@
 export function Home() {
   return (
     <div>
-      <p>Welcome to payments dashboard!</p>
+      <p style={{ marginTop: 5 }}>Welcome to payments dashboard!</p>
     </div>
   );
 }
