@@ -2,6 +2,7 @@ import { useTrialBalance } from '../../hooks/useTrialBalance';
 import { TrialBalanceTable } from '../../components/TrialBalanceTable';
 import { useSearchParams } from 'react-router-dom';
 import { toAsOfParam } from '../../utils/asOf';
+import { Loader } from '../../../../components/Loader'
 
 import './TrialBalanceView.css';
 
@@ -13,7 +14,7 @@ export function TrialBalanceView() {
     toAsOfParam(selectedDate),
   );
 
-  if (isLoading) return <div>Loading trial balance...</div>;
+  if (isLoading) return < Loader />;
   if (error) return <div style={{ color: 'red' }}>{error}</div>;
   if (!trialBalanceData) return <div>No trial balance data available...</div>;
 
