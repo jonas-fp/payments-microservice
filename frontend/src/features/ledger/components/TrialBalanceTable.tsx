@@ -29,10 +29,14 @@ export function TrialBalanceTable({ trialBalanceData }: Props) {
               <td>{entry.accountCode}</td>
               <td>{entry.accountName}</td>
               <td className='money-cell'>
-                {currencyFormatter.format(entry.totalDebit)}
+                {entry.totalDebit
+                  ? currencyFormatter.format(entry.totalDebit)
+                  : '—'}
               </td>
               <td className='money-cell'>
-                {currencyFormatter.format(entry.totalCredit)}
+                {entry.totalCredit
+                  ? currencyFormatter.format(entry.totalCredit)
+                  : '—'}
               </td>
             </tr>
           ))}
