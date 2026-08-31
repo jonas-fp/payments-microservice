@@ -32,6 +32,7 @@
     "eslint-plugin-react-x": "^5.18.1",
     "globals": "^17.7.0",
     "jsdom": "^29.1.1",
+    "msw": "^2.15.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.65.0",
     "vite": "^8.2.0",
