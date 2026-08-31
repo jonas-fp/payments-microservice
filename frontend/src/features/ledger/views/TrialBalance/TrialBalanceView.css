@@ -1,0 +1,25 @@
+h2 {
+  margin: 0px;
+  margin-top: 5px;
+  margin-left: 5px;
+}
+
+p {
+  margin: 0;
+  margin-left: 7px;
+  margin-bottom: 5px;
+}
+
+input {
+  margin-left: 7px;
+  margin-bottom: 5px;
+}
+
+.trial-balance-options {
+  display: flex;
+  margin-bottom: 5px;
+}
+
+.refresh-button {
+  margin-left: 180px;
+}

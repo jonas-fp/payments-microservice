@@ -1,0 +1,28 @@
+.navbar {
+  list-style-type: none;
+  background-color: #333333;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+
+.navbar-link {
+  display: block;
+  color: white;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+.navbar-link:hover {
+  background-color: #111111;
+}
+
+.navbar-link.active {
+  background-color: grey;
+}
+
+.navbar-logo {
+  height: 40px; 
+  padding: 3px 16px;
+  display: block;
+}
