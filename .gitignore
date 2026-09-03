@@ -53,3 +53,7 @@ docs/
 
 # Bash Scripts
 /scripts
+
+# Test Data
+/tests/load/data/processor_statement.csv
+/tests/load/data/transactions.csv
