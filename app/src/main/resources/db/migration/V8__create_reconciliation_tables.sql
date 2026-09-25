@@ -124,7 +124,8 @@ CREATE TABLE reconciliation_breaks (
 CREATE INDEX idx_processor_statement_rows_reconciliation_run_id
     ON processor_statement_rows (reconciliation_run_id);
 
-CREATE INDEX idx_processor_statement_rows_processor_reference
+-- Prevents two processor statement rows from having the same processor reference
+CREATE UNIQUE INDEX idx_processor_statement_rows_processor_reference
     ON processor_statement_rows (processor_reference);
 
 CREATE INDEX idx_reconciliation_breaks_reconciliation_run_id
