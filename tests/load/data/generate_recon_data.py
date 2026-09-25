@@ -1,8 +1,10 @@
 import uuid
 import random
 
+# NOTE: Run check_duplicates.py script to ensure no duplicate processor
+#       references were generated.
 TRANSACTION_COUNT = 100000
-BUSINESS_DATE = '2026-09-03'
+BUSINESS_DATE = '2026-09-05'
 
 with (
   open("transactions.csv", "w") as transaction_file,

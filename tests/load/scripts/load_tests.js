@@ -11,8 +11,9 @@ export const options = {
 };
 
 // NOTE: Change to env variables later if script used in prod or staging
+// NOTE: Update business date to match date of test data 
 const rootUrl = 'http://127.0.0.1:8080/v1';
-const businessDate = '2026-09-03';
+const businessDate = '2026-09-05';
 
 const transactionsFile = await fsOpen('../data/transactions.csv');
 const transactions = await csv.parse(transactionsFile, {
