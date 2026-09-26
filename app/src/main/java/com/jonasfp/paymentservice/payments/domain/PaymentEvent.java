@@ -34,8 +34,7 @@ public class PaymentEvent extends BaseEntity {
     @Column(name = "idempotency_key_id")
     private UUID idempotencyKeyId;
 
-    public PaymentEvent() {
-    }
+    public PaymentEvent() {}
 
     public UUID getPaymentId() {
         return paymentId;

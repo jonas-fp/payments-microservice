@@ -9,5 +9,5 @@ public record TrialBalanceResponse(
     BigDecimal totalDebits,
     BigDecimal totalCredits,
     Boolean isBalanced,
-    List<TrialBalanceEntry> entries
-) {}
+    List<TrialBalanceEntry> entries) {
+}

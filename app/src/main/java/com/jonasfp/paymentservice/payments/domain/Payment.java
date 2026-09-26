@@ -20,13 +20,16 @@ public class Payment extends BaseEntity {
     @Column(name = "invoice_id", nullable = false)
     private UUID invoiceId;
 
-    @Column(name = "authorized_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "authorized_amount", nullable = false, precision = 15,
+        scale = 2)
     private BigDecimal authorizedAmount;
 
-    @Column(name = "captured_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "captured_amount", nullable = false, precision = 15,
+        scale = 2)
     private BigDecimal capturedAmount;
 
-    @Column(name = "refunded_amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "refunded_amount", nullable = false, precision = 15,
+        scale = 2)
     private BigDecimal refundedAmount;
 
     @Column(name = "currency", nullable = false, length = 3)
@@ -39,8 +42,7 @@ public class Payment extends BaseEntity {
     @Column(name = "processor_payment_reference", length = 128)
     private String processorPaymentReference;
 
-    public Payment() {
-    }
+    public Payment() {}
 
     public String getCustomerId() {
         return customerId;

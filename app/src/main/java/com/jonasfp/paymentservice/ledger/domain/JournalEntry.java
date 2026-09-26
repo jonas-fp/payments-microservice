@@ -26,8 +26,7 @@ public class JournalEntry extends BaseEntity {
     @Column(name = "transaction_type", nullable = false, length = 32)
     private TransactionType transactionType;
 
-    public JournalEntry() {
-    }
+    public JournalEntry() {}
 
     public UUID getPaymentId() {
         return paymentId;

@@ -6,10 +6,13 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import com.jonasfp.paymentservice.domain.Money;
 import com.jonasfp.paymentservice.infra.persistence.BaseEntity;
+import com.jonasfp.paymentservice.domain.TransactionType;
 
 @Entity
 @Table(name = "processor_statement_rows")
@@ -22,8 +25,9 @@ public class ProcessorStatementRow extends BaseEntity {
     @Column(name = "business_date", nullable = false)
     private LocalDate businessDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "record_type", nullable = false, length = 32)
-    private String recordType;
+    private TransactionType recordType;
 
     @Column(name = "processor_reference", nullable = false, length = 128)
     private String processorReference;
@@ -61,11 +65,11 @@ public class ProcessorStatementRow extends BaseEntity {
         this.businessDate = businessDate;
     }
 
-    public String getRecordType() {
+    public TransactionType getRecordType() {
         return recordType;
     }
 
-    public void setRecordType(String recordType) {
+    public void setRecordType(TransactionType recordType) {
         this.recordType = recordType;
     }
 

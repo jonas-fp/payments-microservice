@@ -6,5 +6,5 @@ public record TrialBalanceEntry(
     String accountCode,
     String accountName,
     BigDecimal totalDebit,
-    BigDecimal totalCredit
-) {}
+    BigDecimal totalCredit) {
+}

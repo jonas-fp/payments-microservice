@@ -67,7 +67,8 @@ class LedgerControllerIntegrationTest {
     void getAccountBalance_afterCapture_returnsCorrectBalance() {
         // 1. Get the Cash Clearing account (Asset)
         LedgerAccount cashClearing =
-            ledgerAccountRepository.findByAccountCode(LedgerAccountCodes.CASH_CLEARING)
+            ledgerAccountRepository
+                .findByAccountCode(LedgerAccountCodes.CASH_CLEARING)
                 .orElseThrow();
         UUID accountId = cashClearing.getId();
 
@@ -112,7 +113,8 @@ class LedgerControllerIntegrationTest {
             .expectStatus().isOk()
             .expectBody()
             .jsonPath("$.accountId").isEqualTo(accountId.toString())
-            .jsonPath("$.accountCode").isEqualTo(LedgerAccountCodes.CASH_CLEARING)
+            .jsonPath("$.accountCode")
+            .isEqualTo(LedgerAccountCodes.CASH_CLEARING)
             .jsonPath("$.balance").isEqualTo(100.00)
             .jsonPath("$.currency").isEqualTo("USD");
     }
@@ -161,13 +163,17 @@ class LedgerControllerIntegrationTest {
             .jsonPath("$.totalDebits").isEqualTo(100.00)
             .jsonPath("$.totalCredits").isEqualTo(100.00)
             .jsonPath("$.isBalanced").isEqualTo(true)
-            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.CASH_CLEARING + "')].totalDebit")
+            .jsonPath("$.entries[?(@.accountCode=='"
+                + LedgerAccountCodes.CASH_CLEARING + "')].totalDebit")
             .isEqualTo(100.00)
-            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.CASH_CLEARING + "')].totalCredit")
+            .jsonPath("$.entries[?(@.accountCode=='"
+                + LedgerAccountCodes.CASH_CLEARING + "')].totalCredit")
             .isEqualTo(0)
-            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.DEFERRED_REVENUE + "')].totalDebit")
+            .jsonPath("$.entries[?(@.accountCode=='"
+                + LedgerAccountCodes.DEFERRED_REVENUE + "')].totalDebit")
             .isEqualTo(0)
-            .jsonPath("$.entries[?(@.accountCode=='" + LedgerAccountCodes.DEFERRED_REVENUE + "')].totalCredit")
+            .jsonPath("$.entries[?(@.accountCode=='"
+                + LedgerAccountCodes.DEFERRED_REVENUE + "')].totalCredit")
             .isEqualTo(100.00);
     }
 }

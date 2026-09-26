@@ -7,14 +7,14 @@ public record CurrencyCode(String value) {
 
     public CurrencyCode {
         value = Objects.requireNonNull(value, "value must not be null").trim()
-                .toUpperCase(Locale.ROOT);
+            .toUpperCase(Locale.ROOT);
         if (value.length() != 3) {
             throw new IllegalArgumentException(
-                    "currency code must be a 3-letter ISO 4217 code");
+                "currency code must be a 3-letter ISO 4217 code");
         }
         if (!value.chars().allMatch(Character::isLetter)) {
             throw new IllegalArgumentException(
-                    "currency code must contain only letters");
+                "currency code must contain only letters");
         }
     }
 
