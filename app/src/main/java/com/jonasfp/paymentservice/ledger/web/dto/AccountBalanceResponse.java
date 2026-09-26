@@ -9,5 +9,5 @@ public record AccountBalanceResponse(
     String accountCode,
     BigDecimal balance,
     String currency,
-    OffsetDateTime asOf
-) {}
+    OffsetDateTime asOf) {
+}

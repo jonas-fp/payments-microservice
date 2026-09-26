@@ -5,5 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.jonasfp.paymentservice.payments.domain.Payment;
 
 public interface PaymentRepository
-        extends JpaRepository<Payment, UUID> {
+    extends JpaRepository<Payment, UUID> {
 }

@@ -28,8 +28,7 @@ public class Capture extends BaseEntity {
     @Column(name = "processor_capture_reference", length = 128)
     private String processorCaptureReference;
 
-    public Capture() {
-    }
+    public Capture() {}
 
     public Money getMoney() {
         return Money.of(amount, currency);

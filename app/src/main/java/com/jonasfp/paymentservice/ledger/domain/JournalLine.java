@@ -27,12 +27,11 @@ public class JournalLine extends BaseEntity {
 
     @Column(name = "amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
-    
+
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 
-    public JournalLine() {
-    }
+    public JournalLine() {}
 
     public Money getMoney() {
         return Money.of(amount, currency);

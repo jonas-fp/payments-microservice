@@ -117,12 +117,14 @@ class ReconciliationControllerIntegrationTest {
                 assertThat(rows).anySatisfy(row -> {
                     assertThat(row.getProcessorReference()).isEqualTo("proc_1");
                     assertThat(row.getAmount()).isEqualByComparingTo("100.00");
-                    assertThat(row.getRecordType()).isEqualTo(TransactionType.CAPTURE);
+                    assertThat(row.getRecordType())
+                        .isEqualTo(TransactionType.CAPTURE);
                 });
                 assertThat(rows).anySatisfy(row -> {
                     assertThat(row.getProcessorReference()).isEqualTo("proc_2");
                     assertThat(row.getAmount()).isEqualByComparingTo("50.00");
-                    assertThat(row.getRecordType()).isEqualTo(TransactionType.REFUND);
+                    assertThat(row.getRecordType())
+                        .isEqualTo(TransactionType.REFUND);
                 });
             });
     }
@@ -232,9 +234,11 @@ class ReconciliationControllerIntegrationTest {
                 assertThat(summary.breakSummary())
                     .containsEntry(ReconciliationBreakType.AMOUNT_MISMATCH, 1L);
                 assertThat(summary.breakSummary())
-                    .containsEntry(ReconciliationBreakType.MISSING_INTERNAL_RECORD, 1L);
+                    .containsEntry(
+                        ReconciliationBreakType.MISSING_INTERNAL_RECORD, 1L);
                 assertThat(summary.breakSummary())
-                    .containsEntry(ReconciliationBreakType.MISSING_PROCESSOR_RECORD, 1L);
+                    .containsEntry(
+                        ReconciliationBreakType.MISSING_PROCESSOR_RECORD, 1L);
             });
     }
 

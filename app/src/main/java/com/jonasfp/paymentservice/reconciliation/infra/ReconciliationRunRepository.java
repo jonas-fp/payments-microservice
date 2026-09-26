@@ -16,5 +16,5 @@ public interface ReconciliationRunRepository
         LocalDate businessDate, ReconciliationRunStatus status);
 
     Optional<ReconciliationRun> findFirstByBusinessDateAndStatus(
-      LocalDate businessDate, ReconciliationRunStatus status);
+        LocalDate businessDate, ReconciliationRunStatus status);
 }

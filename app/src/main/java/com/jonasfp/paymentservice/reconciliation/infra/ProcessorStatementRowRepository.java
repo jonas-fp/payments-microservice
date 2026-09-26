@@ -9,16 +9,16 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public interface ProcessorStatementRowRepository
-  extends JpaRepository<ProcessorStatementRow, UUID> {
+    extends JpaRepository<ProcessorStatementRow, UUID> {
 
-  List<ProcessorStatementRow> findAllByReconciliationRunId(
-    UUID reconciliationRunId);
+    List<ProcessorStatementRow> findAllByReconciliationRunId(
+        UUID reconciliationRunId);
 
-  default Map<String, ProcessorStatementRow> findAllByReconciliationRunIdAsMap(
-    UUID reconciliationRunId) {
-      return findAllByReconciliationRunId(reconciliationRunId).stream()
-        .collect(Collectors.toMap(
-          ProcessorStatementRow::getProcessorReference, Function.identity()
-        ));
-  }
+    default Map<String, ProcessorStatementRow> findAllByReconciliationRunIdAsMap(
+        UUID reconciliationRunId) {
+        return findAllByReconciliationRunId(reconciliationRunId).stream()
+            .collect(Collectors.toMap(
+                ProcessorStatementRow::getProcessorReference,
+                Function.identity()));
+    }
 }

@@ -13,5 +13,5 @@ public record ReconciliationRunSummary(
     ReconciliationRunStatus status,
     OffsetDateTime startedAt,
     OffsetDateTime completedAt,
-    Map<ReconciliationBreakType, Long> breakSummary
-) {}
+    Map<ReconciliationBreakType, Long> breakSummary) {
+}
