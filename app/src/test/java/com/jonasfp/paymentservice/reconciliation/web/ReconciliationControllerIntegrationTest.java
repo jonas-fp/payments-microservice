@@ -1,6 +1,7 @@
 package com.jonasfp.paymentservice.reconciliation.web;
 
 import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import com.jonasfp.paymentservice.domain.TransactionType;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.reconciliation.domain.ReconciliationBreakType;
@@ -115,12 +117,12 @@ class ReconciliationControllerIntegrationTest {
                 assertThat(rows).anySatisfy(row -> {
                     assertThat(row.getProcessorReference()).isEqualTo("proc_1");
                     assertThat(row.getAmount()).isEqualByComparingTo("100.00");
-                    assertThat(row.getRecordType()).isEqualTo("CAPTURE");
+                    assertThat(row.getRecordType()).isEqualTo(TransactionType.CAPTURE);
                 });
                 assertThat(rows).anySatisfy(row -> {
                     assertThat(row.getProcessorReference()).isEqualTo("proc_2");
                     assertThat(row.getAmount()).isEqualByComparingTo("50.00");
-                    assertThat(row.getRecordType()).isEqualTo("REFUND");
+                    assertThat(row.getRecordType()).isEqualTo(TransactionType.REFUND);
                 });
             });
     }

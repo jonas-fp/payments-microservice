@@ -18,6 +18,7 @@ import com.jonasfp.paymentservice.reconciliation.web.dto.ReconciliationRunSummar
 import com.jonasfp.paymentservice.payments.infra.CaptureRepository;
 import com.jonasfp.paymentservice.payments.infra.RefundRepository;
 import com.jonasfp.paymentservice.domain.Money;
+import com.jonasfp.paymentservice.domain.TransactionType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
