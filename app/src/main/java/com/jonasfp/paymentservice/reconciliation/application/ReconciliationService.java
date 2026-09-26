@@ -113,117 +113,100 @@ public class ReconciliationService {
 
     @Transactional
     public UUID runReconciliation(LocalDate businessDate) {
-        // NOTE: The matching logic is intentionally a O(n^2) algorithm. I want
-        // to measure its performance before optimizing it to O(n) to see 
-        // the performance increase.
-
-        // 1. Find the PENDING run
+        // Find the PENDING run
         ReconciliationRun run = runRepository
             .findWithLockFirstByBusinessDateAndStatus(businessDate,
                 ReconciliationRunStatus.PENDING)
             .orElseThrow(() -> new IllegalStateException(
                 "No PENDING reconciliation run found for " + businessDate));
 
-        // 2. Update status to RUNNING
+        // Update status to RUNNING
         run.setStatus(ReconciliationRunStatus.RUNNING);
         run.setStartedAt(OffsetDateTime.now());
         run = runRepository.save(run);
 
         try {
-            // 3. Fetch data
-            List<ProcessorStatementRow> statementRows =
+            // Load processor statement rows into a hash table
+            Map<String, ProcessorStatementRow> statementRowByRef = 
                 processorStatementRowRepository
-                    .findAllByReconciliationRunId(run.getId());
+                    .findAllByReconciliationRunIdAsMap(run.getId());
 
             OffsetDateTime start =
                 businessDate.atStartOfDay().atOffset(ZoneOffset.UTC);
             OffsetDateTime end = businessDate.plusDays(1).atStartOfDay()
                 .atOffset(ZoneOffset.UTC);
 
+            // NOTE: Adding indexes for date on capture and refund tables would
+            //       speed up this code, but at the cost of slower transactions
             List<Capture> captures =
                 captureRepository.findAllByCreatedAtBetween(start, end);
             List<Refund> refunds =
                 refundRepository.findAllByCreatedAtBetween(start, end);
 
-            // 4. Matching Logic
-            Set<UUID> matchedCaptureIds = new HashSet<>();
-            Set<UUID> matchedRefundIds = new HashSet<>();
+            // Matching Logic
             List<ReconciliationBreak> breaks = new ArrayList<>();
 
-            for (ProcessorStatementRow row : statementRows) {
-                if ("CAPTURE".equals(row.getRecordType())) {
-                    Optional<Capture> captureOpt = captures.stream()
-                        .filter(c -> c.getProcessorCaptureReference()
-                            .equals(row.getProcessorReference()))
-                        .findFirst();
+            for (Capture capture: captures) {
+              String ref = capture.getProcessorCaptureReference();
+              ProcessorStatementRow statementRow = statementRowByRef.remove(ref);
 
-                    if (captureOpt.isPresent()) {
-                        Capture capture = captureOpt.get();
-                        matchedCaptureIds.add(capture.getId());
-                        if (!capture.getMoney().equals(row.getMoney())) {
-                            breaks.add(createAmountMismatchBreak(run, row,
-                                capture.getPaymentId(),
-                                String.format(
-                                    "Amount mismatch: Internal=%s, " +
-                                        "Processor=%s",
-                                    capture.getMoney(), row.getMoney())));
-                        }
-                    } else {
-                        breaks.add(createMissingInternalBreak(run, row,
-                            "No internal capture record found for processor "
-                                + "reference: "
-                                + row.getProcessorReference()));
-                    }
-                } else if ("REFUND".equals(row.getRecordType())) {
-                    Optional<Refund> refundOpt = refunds.stream()
-                        .filter(r -> r.getProcessorRefundReference()
-                            .equals(row.getProcessorReference()))
-                        .findFirst();
-
-                    if (refundOpt.isPresent()) {
-                        Refund refund = refundOpt.get();
-                        matchedRefundIds.add(refund.getId());
-                        if (!refund.getMoney().equals(row.getMoney())) {
-                            breaks.add(createAmountMismatchBreak(run, row,
-                                refund.getPaymentId(),
-                                String.format(
-                                    "Amount mismatch: Internal=%s, " +
-                                        "Processor=%s",
-                                    refund.getMoney(), row.getMoney())));
-                        }
-                    } else {
-                        breaks.add(createMissingInternalBreak(run, row,
-                            "No internal refund record found for processor " +
-                                "reference: "
-                                + row.getProcessorReference()));
-                    }
-                }
+              if (statementRow != null) {
+                if (!capture.getMoney().equals(statementRow.getMoney())) {
+                  breaks.add(createAmountMismatchBreak(run, statementRow,
+                      capture.getPaymentId(),
+                      String.format(
+                          "Amount mismatch: Internal=%s, " +
+                              "Processor=%s",
+                          capture.getMoney(), statementRow.getMoney())));
+              }
+              } else {
+                breaks.add(createMissingProcessorBreak(run,
+                  capture.getPaymentId(),
+                  "Internal capture record missing from processor "
+                      + "statement: "
+                      + capture.getProcessorCaptureReference()));
+              }
             }
 
-            // 5. Identify Missing Processor Records
-            for (Capture capture : captures) {
-                if (!matchedCaptureIds.contains(capture.getId())) {
-                    breaks.add(createMissingProcessorBreak(run,
-                        capture.getPaymentId(),
-                        "Internal capture record missing from processor "
-                            + "statement: "
-                            + capture.getProcessorCaptureReference()));
-                }
-            }
-            for (Refund refund : refunds) {
-                if (!matchedRefundIds.contains(refund.getId())) {
-                    breaks.add(createMissingProcessorBreak(run,
-                        refund.getPaymentId(),
-                        "Internal refund record missing from processor "
-                            + "statement: "
-                            + refund.getProcessorRefundReference()));
-                }
+            for (Refund refund: refunds) {
+              String ref = refund.getProcessorRefundReference();
+              ProcessorStatementRow statementRow = statementRowByRef.remove(ref);
+
+              if (statementRow != null) {
+                if (!refund.getMoney().equals(statementRow.getMoney())) {
+                  breaks.add(createAmountMismatchBreak(run, statementRow,
+                      refund.getPaymentId(),
+                      String.format(
+                          "Amount mismatch: Internal=%s, " +
+                              "Processor=%s",
+                          refund.getMoney(), statementRow.getMoney())));
+              } else {
+                breaks.add(createMissingProcessorBreak(run,
+                  refund.getPaymentId(),
+                  "Internal refund record missing from processor "
+                      + "statement: "
+                      + refund.getProcessorRefundReference()));
+              }
+            }}
+
+            for (ProcessorStatementRow statementRow : statementRowByRef.values()) {
+              if (statementRow.getRecordType().equals(TransactionType.CAPTURE)) {
+                breaks.add(createMissingInternalBreak(run, statementRow,
+                  "No internal capture record found for processor "
+                      + "reference: "
+                      + statementRow.getProcessorReference()));
+              } else if (statementRow.getRecordType().equals(TransactionType.REFUND)) {
+                breaks.add(createMissingInternalBreak(run, statementRow,
+                  "No internal refund record found for processor " 
+                      + "reference: "
+                      + statementRow.getProcessorReference()));
+              }
             }
 
-            // 6. Save breaks
+            // Save breaks
             breakRepository.saveAll(breaks);
 
-            // 7. Complete run
+            // Complete run
             run.setStatus(ReconciliationRunStatus.SUCCEEDED);
         } catch (Exception e) {
             run.setStatus(ReconciliationRunStatus.FAILED);
