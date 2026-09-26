@@ -165,7 +165,7 @@ class ReconciliationControllerIntegrationTest {
 
         // 4. Verify results
         UUID runId = runRepository
-            .findByBusinessDateAndStatus(businessDate,
+            .findFirstByBusinessDateAndStatus(businessDate,
                 ReconciliationRunStatus.SUCCEEDED)
             .orElseThrow().getId();
 
@@ -217,7 +217,7 @@ class ReconciliationControllerIntegrationTest {
 
         // 4. Verify results
         UUID runId = runRepository
-            .findByBusinessDateAndStatus(businessDate,
+            .findFirstByBusinessDateAndStatus(businessDate,
                 ReconciliationRunStatus.SUCCEEDED)
             .orElseThrow().getId();
 

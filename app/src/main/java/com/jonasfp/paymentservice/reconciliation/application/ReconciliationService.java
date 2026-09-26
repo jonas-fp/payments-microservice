@@ -119,7 +119,7 @@ public class ReconciliationService {
 
         // 1. Find the PENDING run
         ReconciliationRun run = runRepository
-            .findByBusinessDateAndStatus(businessDate,
+            .findWithLockFirstByBusinessDateAndStatus(businessDate,
                 ReconciliationRunStatus.PENDING)
             .orElseThrow(() -> new IllegalStateException(
                 "No PENDING reconciliation run found for " + businessDate));
