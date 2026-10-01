@@ -1,7 +1,6 @@
 package com.jonasfp.paymentservice.reconciliation.web;
 
 import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
