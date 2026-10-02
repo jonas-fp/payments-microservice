@@ -21,7 +21,6 @@ import com.jonasfp.paymentservice.payments.domain.IdempotencyActionType;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CaptureResponse;
-import com.jonasfp.paymentservice.payments.web.dto.PaymentDetailsResponse;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
 import com.jonasfp.paymentservice.payments.web.dto.RefundRequest;
 import com.jonasfp.paymentservice.payments.web.dto.RefundResponse;
