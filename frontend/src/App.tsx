@@ -5,6 +5,7 @@ import { Navbar } from './components/Navbar.tsx';
 //       page at once.
 import { Home } from './pages/home';
 import { TrialBalancePage } from './pages/ledger/trial-balance';
+import { PaymentDetailsPage } from './pages/payments/payment-details.tsx';
 import './App.css';
 
 export function App() {
@@ -19,6 +20,16 @@ export function App() {
           <Route path='/home' element={<Home />} />
 
           <Route path='/ledger/trial-balance' element={<TrialBalancePage />} />
+
+          <Route
+            path='/payments/payment-details/:paymentId'
+            element={<PaymentDetailsPage />}
+          />
+
+          <Route
+            path='/payments/payment-details'
+            element={<PaymentDetailsPage />}
+          />
         </Routes>
       </div>
     </BrowserRouter>

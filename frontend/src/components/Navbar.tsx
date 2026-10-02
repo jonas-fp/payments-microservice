@@ -23,6 +23,11 @@ export function Navbar() {
             Trial Balance
           </NavLink>
         </li>
+        <li>
+          <NavLink className='navbar-link' to='/payments/payment-details'>
+            Payment Details
+          </NavLink>
+        </li>
       </ul>
     </nav>
   );
