@@ -8,7 +8,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jonasfp.paymentservice.domain.PaymentEventType;
 import com.jonasfp.paymentservice.domain.PaymentStatus;
 import com.jonasfp.paymentservice.payments.domain.IdempotencyActionType;
 import com.jonasfp.paymentservice.payments.domain.IdempotencyKey;
@@ -27,6 +32,7 @@ import com.jonasfp.paymentservice.payments.domain.IdempotencyResponseStatus;
 import com.jonasfp.paymentservice.payments.domain.Payment;
 import com.jonasfp.paymentservice.payments.domain.PaymentEvent;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
+import com.jonasfp.paymentservice.payments.web.dto.PaymentDetailsResponse;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
 import com.jonasfp.paymentservice.payments.infra.CaptureRepository;
 import com.jonasfp.paymentservice.payments.infra.IdempotencyKeyRepository;
@@ -210,6 +216,129 @@ class PaymentServiceTest {
                 .hasMessageContaining(
                     "Idempotency key reuse with different request"
                         + " body");
+    }
+
+    @Test
+    void getPaymentDetailsById_existingPayment_returnsPaymentDetails() {
+        // Given
+        UUID paymentId = UUID.randomUUID();
+        UUID invoiceId = UUID.randomUUID();
+        OffsetDateTime paymentCreatedAt =
+            OffsetDateTime.of(2026, 10, 1, 12, 0, 0, 0, ZoneOffset.UTC);
+
+        Payment payment = new Payment();
+        payment.setId(paymentId);
+        payment.setCustomerId("customer-1");
+        payment.setInvoiceId(invoiceId);
+        payment.setAuthorizedAmount(new BigDecimal("100.00"));
+        payment.setCapturedAmount(new BigDecimal("100.00"));
+        payment.setRefundedAmount(new BigDecimal("25.00"));
+        payment.setCurrency("USD");
+        payment.setStatus(PaymentStatus.CAPTURED);
+        payment.setProcessorPaymentReference("proc_payment_123");
+        payment.setCreatedAt(paymentCreatedAt);
+
+        PaymentEvent event1 = new PaymentEvent();
+        event1.setId(UUID.randomUUID());
+        event1.setPaymentId(paymentId);
+        event1.setEventType(PaymentEventType.AUTHORIZE_SUCCESS);
+        event1.setProcessorEventReference("proc_evt_1");
+        event1.setCreatedAt(paymentCreatedAt);
+
+        PaymentEvent event2 = new PaymentEvent();
+        event2.setId(UUID.randomUUID());
+        event2.setPaymentId(paymentId);
+        event2.setEventType(PaymentEventType.CAPTURE_SUCCESS);
+        event2.setProcessorEventReference("proc_evt_2");
+        event2.setCreatedAt(paymentCreatedAt.plusMinutes(5));
+
+        when(paymentRepository.findById(paymentId))
+            .thenReturn(Optional.of(payment));
+        when(paymentEventRepository
+            .findByPaymentIdOrderByCreatedAtAsc(paymentId))
+                .thenReturn(List.of(event1, event2));
+
+        // When
+        PaymentDetailsResponse response =
+            paymentService.getPaymentDetailsById(paymentId);
+
+        // Then
+        assertThat(response.id()).isEqualTo(paymentId);
+        assertThat(response.customerId()).isEqualTo("customer-1");
+        assertThat(response.invoiceId()).isEqualTo(invoiceId);
+        assertThat(response.authorizedAmount())
+            .isEqualTo(BigInteger.valueOf(10000));
+        assertThat(response.capturedAmount())
+            .isEqualTo(BigInteger.valueOf(10000));
+        assertThat(response.refundedAmount())
+            .isEqualTo(BigInteger.valueOf(2500));
+        assertThat(response.currency()).isEqualTo("USD");
+        assertThat(response.status()).isEqualTo(PaymentStatus.CAPTURED);
+        assertThat(response.processorReference())
+            .isEqualTo("proc_payment_123");
+        assertThat(response.createdAt()).isEqualTo(paymentCreatedAt);
+        assertThat(response.history()).hasSize(2);
+        assertThat(response.history().get(0).eventType())
+            .isEqualTo(PaymentEventType.AUTHORIZE_SUCCESS);
+        assertThat(response.history().get(0).processorEventReference())
+            .isEqualTo("proc_evt_1");
+        assertThat(response.history().get(1).eventType())
+            .isEqualTo(PaymentEventType.CAPTURE_SUCCESS);
+        assertThat(response.history().get(1).processorEventReference())
+            .isEqualTo("proc_evt_2");
+
+        verify(paymentRepository).findById(paymentId);
+        verify(paymentEventRepository)
+            .findByPaymentIdOrderByCreatedAtAsc(paymentId);
+    }
+
+    @Test
+    void getPaymentDetailsById_paymentNotFound_throwsException() {
+        // Given
+        UUID paymentId = UUID.randomUUID();
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.empty());
+
+        // When / Then
+        assertThatThrownBy(
+            () -> paymentService.getPaymentDetailsById(paymentId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("No payment found");
+
+        verify(paymentRepository).findById(paymentId);
+        verify(paymentEventRepository, never())
+            .findByPaymentIdOrderByCreatedAtAsc(any());
+    }
+
+    @Test
+    void getPaymentDetailsById_paymentWithNoEvents_returnsDetailsWithEmptyHistory() {
+        // Given
+        UUID paymentId = UUID.randomUUID();
+        Payment payment = new Payment();
+        payment.setId(paymentId);
+        payment.setCustomerId("customer-1");
+        payment.setInvoiceId(UUID.randomUUID());
+        payment.setAuthorizedAmount(new BigDecimal("50.00"));
+        payment.setCapturedAmount(BigDecimal.ZERO);
+        payment.setRefundedAmount(BigDecimal.ZERO);
+        payment.setCurrency("USD");
+        payment.setStatus(PaymentStatus.AUTHORIZED);
+        payment.setProcessorPaymentReference("proc_payment_456");
+
+        when(paymentRepository.findById(paymentId))
+            .thenReturn(Optional.of(payment));
+        when(paymentEventRepository
+            .findByPaymentIdOrderByCreatedAtAsc(paymentId))
+                .thenReturn(List.of());
+
+        // When
+        PaymentDetailsResponse response =
+            paymentService.getPaymentDetailsById(paymentId);
+
+        // Then
+        assertThat(response.id()).isEqualTo(paymentId);
+        assertThat(response.authorizedAmount())
+            .isEqualTo(BigInteger.valueOf(5000));
+        assertThat(response.history()).isEmpty();
     }
 
     private String calculateHash(AuthorizePaymentRequest request) {

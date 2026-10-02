@@ -21,6 +21,7 @@ import com.jonasfp.paymentservice.payments.domain.IdempotencyActionType;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CaptureResponse;
+import com.jonasfp.paymentservice.payments.web.dto.PaymentDetailsResponse;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
 import com.jonasfp.paymentservice.payments.web.dto.RefundRequest;
 import com.jonasfp.paymentservice.payments.web.dto.RefundResponse;
@@ -567,5 +568,118 @@ class PaymentControllerIntegrationTest {
             .bodyValue(refRequest)
             .exchange()
             .expectStatus().isEqualTo(400);
+    }
+
+    @Test
+    void getPaymentById_existingPayment_returnsOkAndPaymentDetails() {
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        UUID invoiceId = UUID.randomUUID();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", invoiceId, new BigInteger("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        UUID paymentId = authResponse.id();
+
+        webTestClient.get()
+            .uri("/v1/payments/{paymentId}", paymentId)
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$.id").isEqualTo(paymentId.toString())
+            .jsonPath("$.customerId").isEqualTo("customer-1")
+            .jsonPath("$.invoiceId").isEqualTo(invoiceId.toString())
+            .jsonPath("$.authorizedAmount").isEqualTo(10000)
+            .jsonPath("$.capturedAmount").isEqualTo(0)
+            .jsonPath("$.refundedAmount").isEqualTo(0)
+            .jsonPath("$.currency").isEqualTo("USD")
+            .jsonPath("$.status").isEqualTo("AUTHORIZED")
+            .jsonPath("$.processorReference").isNotEmpty()
+            .jsonPath("$.createdAt").isNotEmpty()
+            .jsonPath("$.history").isArray()
+            .jsonPath("$.history.length()").isEqualTo(1)
+            .jsonPath("$.history[0].eventType").isEqualTo("AUTHORIZE_SUCCESS")
+            .jsonPath("$.history[0].processorEventReference").isNotEmpty()
+            .jsonPath("$.history[0].createdAt").isNotEmpty();
+    }
+
+    @Test
+    void getPaymentById_afterCaptureAndRefund_returnsUpdatedDetailsAndHistory() {
+        // 1. Authorize
+        String authIdempotencyKey = UUID.randomUUID().toString();
+        AuthorizePaymentRequest authRequest = new AuthorizePaymentRequest(
+            "customer-1", UUID.randomUUID(), new BigInteger("10000"), "USD");
+
+        PaymentResponse authResponse = webTestClient.post()
+            .uri("/v1/payments/authorize")
+            .header("Idempotency-Key", authIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(authRequest)
+            .exchange()
+            .expectStatus().isCreated()
+            .expectBody(PaymentResponse.class)
+            .returnResult()
+            .getResponseBody();
+
+        UUID paymentId = authResponse.id();
+
+        // 2. Capture
+        String capIdempotencyKey = UUID.randomUUID().toString();
+        CapturePaymentRequest capRequest = new CapturePaymentRequest(
+            "customer-1", new BigInteger("10000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/capture", paymentId)
+            .header("Idempotency-Key", capIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(capRequest)
+            .exchange()
+            .expectStatus().isCreated();
+
+        // 3. Partial Refund
+        String refIdempotencyKey = UUID.randomUUID().toString();
+        RefundRequest refRequest = new RefundRequest(
+            "customer-1", new BigInteger("4000"), "USD");
+
+        webTestClient.post()
+            .uri("/v1/payments/{id}/refunds", paymentId)
+            .header("Idempotency-Key", refIdempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(refRequest)
+            .exchange()
+            .expectStatus().isCreated();
+
+        // 4. Query payment details
+        webTestClient.get()
+            .uri("/v1/payments/{paymentId}", paymentId)
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$.id").isEqualTo(paymentId.toString())
+            .jsonPath("$.authorizedAmount").isEqualTo(10000)
+            .jsonPath("$.capturedAmount").isEqualTo(10000)
+            .jsonPath("$.refundedAmount").isEqualTo(4000)
+            .jsonPath("$.status").isEqualTo("PARTIALLY_REFUNDED")
+            .jsonPath("$.history.length()").isEqualTo(3)
+            .jsonPath("$.history[0].eventType").isEqualTo("AUTHORIZE_SUCCESS")
+            .jsonPath("$.history[1].eventType").isEqualTo("CAPTURE_SUCCESS")
+            .jsonPath("$.history[2].eventType").isEqualTo("REFUND_SUCCESS");
+    }
+
+    @Test
+    void getPaymentById_notFound_returnsNotFound() {
+        webTestClient.get()
+            .uri("/v1/payments/{paymentId}", UUID.randomUUID())
+            .exchange()
+            .expectStatus().isNotFound();
     }
 }

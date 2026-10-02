@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,6 +33,8 @@ import com.jonasfp.paymentservice.payments.domain.Refund;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CaptureResponse;
+import com.jonasfp.paymentservice.payments.web.dto.PaymentDetailsResponse;
+import com.jonasfp.paymentservice.payments.web.dto.PaymentEventResponse;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
 import com.jonasfp.paymentservice.payments.web.dto.RefundRequest;
 import com.jonasfp.paymentservice.payments.web.dto.RefundResponse;
@@ -75,6 +78,46 @@ public class PaymentService {
         this.journalLineRepository = journalLineRepository;
         this.ledgerAccountRepository = ledgerAccountRepository;
         this.objectMapper = objectMapper;
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentDetailsResponse getPaymentDetailsById(UUID paymentId) {
+        Optional<Payment> existingPayment =
+            paymentRepository.findById(paymentId);
+
+        if (!existingPayment.isPresent()) {
+            throw new IllegalStateException("No payment found");
+        }
+
+        Payment payment = existingPayment.get();
+
+        List<PaymentEvent> paymentEvents =
+            paymentEventRepository
+                .findByPaymentIdOrderByCreatedAtAsc(paymentId);
+
+        List<PaymentEventResponse> history = paymentEvents.stream().map(
+            event -> new PaymentEventResponse(
+                event.getId(),
+                event.getEventType(),
+                event.getProcessorEventReference(),
+                event.getCreatedAt()))
+            .toList();
+
+        return new PaymentDetailsResponse(
+            payment.getId(),
+            payment.getCustomerId(),
+            payment.getInvoiceId(),
+            Money.of(payment.getAuthorizedAmount(), payment.getCurrency())
+                .toMinor(),
+            Money.of(payment.getCapturedAmount(), payment.getCurrency())
+                .toMinor(),
+            Money.of(payment.getRefundedAmount(), payment.getCurrency())
+                .toMinor(),
+            payment.getCurrency(),
+            payment.getStatus(),
+            payment.getProcessorPaymentReference(),
+            payment.getCreatedAt(),
+            history);
     }
 
     @Transactional
@@ -455,4 +498,6 @@ public class PaymentService {
             throw new RuntimeException("Failed to calculate request hash", e);
         }
     }
+
+
 }
