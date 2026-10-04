@@ -3,6 +3,7 @@ package com.jonasfp.paymentservice.payments.web;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -12,6 +13,7 @@ import com.jonasfp.paymentservice.payments.application.PaymentService;
 import com.jonasfp.paymentservice.payments.web.dto.AuthorizePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CapturePaymentRequest;
 import com.jonasfp.paymentservice.payments.web.dto.CaptureResponse;
+import com.jonasfp.paymentservice.payments.web.dto.PaymentDetailsResponse;
 import com.jonasfp.paymentservice.payments.web.dto.PaymentResponse;
 import com.jonasfp.paymentservice.payments.web.dto.RefundRequest;
 import com.jonasfp.paymentservice.payments.web.dto.RefundResponse;
@@ -27,6 +29,24 @@ public class PaymentController {
 
     public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
+    }
+
+    @GetMapping("/{paymentId}")
+    public ResponseEntity<PaymentDetailsResponse> getPaymentById(
+        @PathVariable UUID paymentId) {
+
+        try {
+            PaymentDetailsResponse paymentDetails =
+                paymentService.getPaymentDetailsById(
+                    paymentId);
+            return ResponseEntity.ok(paymentDetails);
+        } catch (IllegalStateException e) {
+            if (e.getMessage().contains("No payment")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            throw e;
+        }
+
     }
 
     @PostMapping("/authorize")

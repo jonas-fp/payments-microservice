@@ -21,7 +21,7 @@ class PaymentServiceDemo:
         authorize_body = {
             "customerId": self.customer_id,
             "invoiceId": str(uuid.uuid4()),
-            "amountMinor": 10000,
+            "minorAmount": 10000,
             "currency": self.currency
         }
 
@@ -39,7 +39,7 @@ class PaymentServiceDemo:
         print("Capturing $100.00...")
         capture_body = {
             "customerId": self.customer_id,
-            "amountMinor": 10000,
+            "minorAmount": 10000,
             "currency": self.currency
         }
         resp = requests.post(
@@ -56,7 +56,7 @@ class PaymentServiceDemo:
         print("Refunding $25.00...")
         refund_body = {
             "customerId": self.customer_id,
-            "amountMinor": 2500,
+            "minorAmount": 2500,
             "currency": self.currency
         }
         resp = requests.post(
@@ -76,7 +76,7 @@ class PaymentServiceDemo:
         authorize_body = {
             "customerId": self.customer_id,
             "invoiceId": str(uuid.uuid4()),
-            "amountMinor": 10000,
+            "minorAmount": 10000,
             "currency": self.currency
         }
 

@@ -35,8 +35,8 @@ CREATE TABLE payment_events (
 --     ON payment_events (processor_event_reference)
 --     WHERE processor_event_reference IS NOT NULL;
 
--- CREATE INDEX idx_payment_events_payment_id 
---     ON payment_events(payment_id);
+CREATE INDEX idx_payment_events_payment_id 
+    ON payment_events(payment_id, created_at ASC);
 
 -- Ensure that capture and refund success events always have a corresponding
 -- record in the captures or refunds table

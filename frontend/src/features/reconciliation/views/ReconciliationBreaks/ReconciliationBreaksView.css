@@ -1,0 +1,45 @@
+.reconciliation-breaks-view h2 {
+  margin: 5px 0 0 5px;
+}
+
+.reconciliation-breaks-view p,
+.reconciliation-breaks-view input {
+  margin: 0 0 5px 7px;
+}
+
+.reconciliation-breaks-options {
+  display: flex;
+  margin-bottom: 5px;
+}
+
+.reconciliation-breaks-options .lookup-button,
+.reconciliation-breaks-options .refresh-button {
+  margin-left: 20px;
+}
+
+.reconciliation-breaks-error {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border: 1px solid #f5c2c7;
+  border-radius: 4px;
+  background-color: #f8d7da;
+  color: #842029;
+  max-width: fit-content;
+}
+
+.reconciliation-run-details {
+  margin: 0 0 10px 7px;
+}
+
+.reconciliation-run-details div {
+  display: flex;
+  gap: 8px;
+}
+
+.reconciliation-run-details dt {
+  font-weight: bold;
+}
+
+.reconciliation-run-details dd {
+  margin: 0;
+}

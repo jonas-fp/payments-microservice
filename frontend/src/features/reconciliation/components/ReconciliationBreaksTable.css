@@ -1,0 +1,23 @@
+.reconciliation-breaks-table {
+  border-collapse: collapse;
+  border: 2px solid;
+  margin-left: 7px;
+}
+
+.reconciliation-breaks-table th,
+.reconciliation-breaks-table td {
+  border: 1px solid;
+  padding: 10px;
+}
+
+.reconciliation-breaks-table th {
+  background-color: rgb(217, 217, 217);
+}
+
+.count-cell {
+  text-align: right;
+}
+
+.totals-cell {
+  font-weight: bold;
+}

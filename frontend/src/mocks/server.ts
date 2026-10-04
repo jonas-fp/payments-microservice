@@ -5,6 +5,12 @@ const handlers = [
   http.get('/api/v1/payments/subledger/trial-balance', () => {
     return new HttpResponse(null, { status: 500 });
   }),
+  http.get('/api/v1/payments/:paymentId', () => {
+    return new HttpResponse(null, { status: 500 });
+  }),
+  http.get('/api/v1/payments/reconciliation/runs/:runId', () => {
+    return new HttpResponse(null, { status: 500 });
+  }),
 ];
 
 export const server = setupServer(...handlers);
