@@ -6,6 +6,7 @@ import { Navbar } from './components/Navbar.tsx';
 import { Home } from './pages/home';
 import { TrialBalancePage } from './pages/ledger/trial-balance';
 import { PaymentDetailsPage } from './pages/payments/payment-details.tsx';
+import { ReconciliationBreaksPage } from './pages/reconciliation/reconciliation-breaks.tsx';
 import './App.css';
 
 export function App() {
@@ -29,6 +30,16 @@ export function App() {
           <Route
             path='/payments/payment-details'
             element={<PaymentDetailsPage />}
+          />
+
+          <Route
+            path='/reconciliation/breaks/:runId'
+            element={<ReconciliationBreaksPage />}
+          />
+
+          <Route
+            path='/reconciliation/breaks'
+            element={<ReconciliationBreaksPage />}
           />
         </Routes>
       </div>
